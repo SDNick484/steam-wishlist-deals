@@ -1,0 +1,10 @@
+# One deal check; triggered by wishlist-deals.timer.
+[Unit]
+Description=Steam wishlist deal check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=steam
+ExecStart=/usr/bin/python3 /opt/steam-wishlist-deals/wishlist_deals.py

@@ -1,0 +1,434 @@
+<title>Wishlist Deals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FCFCFD; --surface-2:#EAEEF3; --line:#DCE1E8; --line-strong:#C5CCD6;
+  --ink:#101621; --ink-2:#465063; --muted:#737D8F;
+  --accent:#2a78d6; --accent-ink:#1c5cab; --accent-soft:#E2EDFB; --on-accent:#fff;
+  --good:#0ca30c; --good-ink:#0b6e0b; --good-soft:#E3F4E3;
+  --warn:#fab219; --warn-ink:#8a5a00; --warn-soft:#FDF1D6; --crit-ink:#b02f2f;
+  --shadow:0 1px 2px rgba(16,22,33,.06),0 4px 16px rgba(16,22,33,.05);
+  --display:"Chakra Petch","Bahnschrift","DIN Alternate",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1015; --surface:#151A21; --surface-2:#1D232C; --line:#29303A; --line-strong:#39414D;
+    --ink:#EFF3F8; --ink-2:#B6BFCC; --muted:#8891A0;
+    --accent:#3987e5; --accent-ink:#86b6ef; --accent-soft:#15253B;
+    --good-ink:#3fcb3f; --good-soft:#12301A; --warn-ink:#fab219; --warn-soft:#352A0E; --crit-ink:#ef7272;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1015; --surface:#151A21; --surface-2:#1D232C; --line:#29303A; --line-strong:#39414D;
+  --ink:#EFF3F8; --ink-2:#B6BFCC; --muted:#8891A0;
+  --accent:#3987e5; --accent-ink:#86b6ef; --accent-soft:#15253B;
+  --good-ink:#3fcb3f; --good-soft:#12301A; --warn-ink:#fab219; --warn-soft:#352A0E; --crit-ink:#ef7272;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:24px 64px;display:flex;flex-direction:column;gap:22px}
+@media (max-width:560px){.wrap{padding-inline:16px;padding-block:18px 48px}}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:clamp(28px,4.2vw,40px);font-weight:700;line-height:1.05}
+h2{font-size:17px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+h2 small{font-family:var(--body);font-size:13px;font-weight:500;color:var(--muted)}
+p{margin:0}
+a{color:var(--accent-ink)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+nav.top{display:flex;gap:16px;font-size:13.5px;font-weight:600}
+nav.top a{color:var(--muted);text-decoration:none}
+nav.top a[aria-current="page"]{color:var(--ink)}
+nav.top a:hover{color:var(--accent-ink)}
+header{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between}
+.title{display:flex;flex-direction:column;gap:8px;max-width:64ch}
+.headline{font-size:16.5px;color:var(--ink-2)} .headline b{color:var(--ink);font-weight:600}
+.source{font-size:13px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);padding:8px 14px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(1.08)} .btn[disabled]{opacity:.6;cursor:default;filter:none}
+.btn svg{width:16px;height:16px}
+
+.kinds{display:flex;flex-wrap:wrap;gap:8px}
+.kind{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:8px 12px;cursor:pointer;display:flex;align-items:baseline;gap:8px;font-weight:600;font-size:13.5px;color:var(--ink-2)}
+.kind b{font-family:var(--display);font-size:19px;color:var(--ink);font-weight:600}
+.kind[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.kind[aria-pressed="true"] b{color:var(--accent-ink)}
+
+.filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.grow{flex:1 1 220px}
+.field label{font-size:12px;font-weight:600;color:var(--muted)}
+input[type=search],select{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:7px 10px;font-size:14px;width:100%}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink-2);padding-bottom:7px;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+
+#groups{display:flex;flex-direction:column;gap:22px}
+section.group{display:flex;flex-direction:column;gap:10px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.deal{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.deal:first-child{border-top:0}
+.rank{font-family:var(--display);font-size:13px;font-weight:600;color:var(--muted);text-align:right}
+.main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.main .name{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.main a.t{color:var(--ink);font-weight:650;font-weight:600;text-decoration:none;overflow-wrap:anywhere}
+.main a.t:hover{color:var(--accent-ink);text-decoration:underline}
+.meta{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.meta .soon{color:var(--warn-ink);font-weight:600}
+.meta .low{color:var(--good-ink);font-weight:600}
+.ratings{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+.rt{display:inline-flex;align-items:baseline;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.rt b{font-variant-numeric:tabular-nums;font-weight:700}
+.rt:hover{outline:1px solid var(--line-strong)}
+.rt.hi b{color:var(--good-ink)} .rt.mid b{color:var(--warn-ink)} .rt.lo b{color:var(--crit-ink)}
+.rt small{font-weight:500;color:var(--muted)}
+.rt.na b{color:var(--muted)}
+.rt i{font-style:normal;font-weight:800;font-size:11px}
+.tags{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:2px}
+.tag{border:0;background:none;padding:0;font-size:12px;color:var(--muted);cursor:pointer}
+.tag::before{content:"#";opacity:.6;margin-right:1px}
+.tag:hover,.tag.on{color:var(--accent-ink);text-decoration:underline}
+.pill.ea{background:var(--warn-soft);color:var(--warn-ink)}
+.pill{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+.pill.new{background:var(--accent);color:var(--on-accent)}
+.pill.nl{background:var(--good-soft);color:var(--good-ink)}
+.price{display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:92px}
+.price .now{font-family:var(--display);font-size:21px;font-weight:600;line-height:1.1}
+.price .was{font-size:12.5px;color:var(--muted)} .price .was s{margin-right:6px}
+.price .cut{color:var(--good-ink);font-weight:700}
+.links{display:flex;gap:6px}
+.links a{font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--line-strong);border-radius:8px;padding:6px 10px;white-space:nowrap;color:var(--ink-2)}
+.links a.primary{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.links a:hover{border-color:var(--accent);color:var(--accent-ink)}
+@media (max-width:720px){
+  .deal{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"main price" "links links";gap:10px 12px}
+  .rank{display:none} .main{grid-area:main} .price{grid-area:price} .links{grid-area:links}
+  .links a{flex:1;text-align:center}
+}
+.empty{background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:24px;color:var(--ink-2)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:9px;font-size:14px;max-width:min(520px,calc(100vw - 32px));box-shadow:var(--shadow);z-index:10}
+footer{font-size:12.5px;color:var(--muted);max-width:90ch}
+</style>
+
+<div class="wrap">
+  <nav class="top" id="pagesNav" aria-label="Pages" hidden></nav>
+  <header>
+    <div class="title">
+      <span class="eyebrow">Steam wishlist</span>
+      <h1>Wishlist Deals</h1>
+      <p class="headline" id="headline">Loading…</p>
+      <p class="source" id="source"></p>
+    </div>
+    <button class="btn" type="button" id="checkBtn">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>
+      Check now
+    </button>
+  </header>
+
+  <div class="kinds" id="kinds" role="group" aria-label="Deal type"></div>
+
+  <div class="filters">
+    <div class="field grow"><label for="q">Search</label><input type="search" id="q" placeholder="Game name or tag" autocomplete="off"></div>
+    <div class="field"><label for="shop">Store</label><select id="shop"><option value="">All stores</option></select></div>
+    <div class="field"><label for="sort">Sort</label>
+      <select id="sort">
+        <option value="rank">Wishlist rank</option>
+        <option value="cut">Biggest discount</option>
+        <option value="price">Lowest price</option>
+        <option value="ending">Ending soonest</option>
+        <option value="rating">Best reviewed</option>
+      </select>
+    </div>
+    <div class="field"><label for="tag">Tag</label><select id="tag"><option value="">All tags</option></select></div>
+    <div class="field"><label for="deckF">Steam Deck</label>
+      <select id="deckF">
+        <option value="">Any</option>
+        <option value="verified">Verified</option>
+        <option value="playable">Verified or Playable</option>
+        <option value="works">Verified, Playable or ProtonDB Gold+</option>
+      </select>
+    </div>
+    <div class="field"><label for="minRating">Steam rating</label>
+      <select id="minRating">
+        <option value="0">Any rating</option>
+        <option value="95">95% and up</option>
+        <option value="85">85% and up</option>
+        <option value="70">70% and up</option>
+      </select>
+    </div>
+    <label class="check"><input type="checkbox" id="newOnly"> New since last alert</label>
+  </div>
+
+  <div id="groups"></div>
+
+  <footer>Prices, all-time lows, ratings and tags come from IsThereAnyDeal and cover official stores only. Deck ratings come from Valve; ProtonDB ratings are community reports. Steam ratings are the share of positive user reviews; Metacritic and OpenCritic are critic averages out of 100. Ratings and tags refresh weekly; click a tag to filter by it. "New" means the deal wasn't in a notification yet. The list updates <span id="schedText">on its schedule</span>, or when you choose Check now.</footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const KINDS = [
+  { k: "target", label: "Under your target" },
+  { k: "low", label: "All-time lows" },
+  { k: "bundle", label: "In a bundle" },
+  { k: "cut", label: "Deep discounts" },
+];
+const F = { kinds: new Set(), q: "", shop: "", tag: "", deck: "", sort: "rank", newOnly: false, minRating: 0 };
+let SNAP = null;
+
+try { const s = JSON.parse(localStorage.getItem("wd-filters") || "null"); if (s) { F.sort = s.sort || "rank"; F.newOnly = !!s.newOnly; F.minRating = Number(s.minRating) || 0; F.deck = s.deck || ""; } } catch (e) {}
+function saveF() { try { localStorage.setItem("wd-filters", JSON.stringify({ sort: F.sort, newOnly: F.newOnly, minRating: F.minRating, deck: F.deck })); } catch (e) {} }
+
+function money(p) {
+  if (!p) return "";
+  const sym = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" }[p.currency] || "";
+  return sym ? sym + p.amount.toFixed(2) : p.amount.toFixed(2) + " " + (p.currency || "");
+}
+function endsIn(iso) {
+  if (!iso) return null;
+  const days = (new Date(iso) - Date.now()) / 86400000;
+  if (days < 0) return null;
+  if (days < 1) return { text: "ends today", soon: true };
+  const d = Math.floor(days);
+  return { text: `ends in ${d} day${d === 1 ? "" : "s"}`, soon: d <= 2 };
+}
+function when(iso) {
+  const d = new Date(iso), now = new Date();
+  const t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const sameDay = d.toDateString() === now.toDateString();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (sameDay) return `today at ${t}`;
+  if (d.toDateString() === y.toDateString()) return `yesterday at ${t}`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ` at ${t}`;
+}
+// Server settings injected by deals_server.py: header links and the scheduled check times.
+const CFG = window.APP_CONFIG || {};
+const CHECK_TIMES = (CFG.checkTimes || [])
+  .map((t) => String(t).match(/^(\d{1,2}):(\d{2})$/)).filter(Boolean)
+  .map((m) => [Number(m[1]), Number(m[2])]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+function nextCheck() {
+  if (!CHECK_TIMES.length) return null;
+  const now = new Date(), c = new Date(now);
+  for (const [h, m] of CHECK_TIMES) { c.setHours(h, m, 0, 0); if (c > now) return c; }
+  c.setDate(c.getDate() + 1); c.setHours(CHECK_TIMES[0][0], CHECK_TIMES[0][1], 0, 0); return c;
+}
+function scheduleText() {
+  if (!CHECK_TIMES.length) return "on its schedule";
+  const fmt = ([h, m]) => new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const ts = CHECK_TIMES.map(fmt);
+  return "at " + (ts.length > 1 ? ts.slice(0, -1).join(", ") + " and " + ts[ts.length - 1] : ts[0]) + " each day";
+}
+(function renderNav() {
+  const links = (CFG.nav || []).filter((l) => l && l.label && l.url);
+  if (!links.length) return;
+  const nav = document.getElementById("pagesNav");
+  nav.innerHTML = links.map((l) => `<a href="${esc(l.url)}">${esc(l.label)}</a>`).join("") +
+    `<a href="./" aria-current="page">Deals</a>`;
+  nav.hidden = false;
+})();
+
+const steamScore = (d) => (d.reviews && d.reviews.steam ? d.reviews.steam.score : null);
+// Steam's own review labels, from the positive % and review count.
+function steamLabel(score, count) {
+  const n = count || 0;
+  if (n < 10) return "";
+  if (score >= 95 && n >= 500) return "Overwhelmingly Positive";
+  if (score >= 80) return n >= 50 ? "Very Positive" : "Positive";
+  if (score >= 70) return "Mostly Positive";
+  if (score >= 40) return "Mixed";
+  if (score >= 20) return "Mostly Negative";
+  if (n >= 500) return "Overwhelmingly Negative";
+  return n >= 50 ? "Very Negative" : "Negative";
+}
+function fmtCount(n) { return !n ? "" : n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n); }
+function tier(score) { return score >= 80 ? "hi" : score >= 60 ? "mid" : "lo"; }
+const DECK = { 3: ["Verified", "✓", "hi"], 2: ["Playable", "!", "mid"], 1: ["Unsupported", "✕", "lo"], 0: ["Unknown", "?", "na"] };
+const PROTON_GOOD = ["native", "platinum", "gold"];
+function protonTier(t) { return PROTON_GOOD.includes(t) ? "hi" : ["silver", "bronze"].includes(t) ? "mid" : t === "borked" ? "lo" : "na"; }
+function deckOk(d) {
+  if (!F.deck) return true;
+  if (F.deck === "verified") return d.deck === 3;
+  if (F.deck === "playable") return d.deck === 3 || d.deck === 2;
+  return d.deck === 3 || d.deck === 2 || PROTON_GOOD.includes((d.protondb || {}).tier);
+}
+function ratingsHtml(d) {
+  const r = d.reviews || {}, out = [];
+  if (d.deck !== null && d.deck !== undefined) {
+    const [label, icon, cls] = DECK[d.deck] || DECK[0];
+    out.push(`<a class="rt ${cls}" href="${esc(d.steamUrl)}" target="_blank" rel="noopener" title="Valve's Steam Deck rating">Deck <b><i aria-hidden="true">${icon}</i> ${label}</b></a>`);
+  }
+  const p = d.protondb || {};
+  if (p.tier) {
+    const name = p.tier.charAt(0).toUpperCase() + p.tier.slice(1);
+    out.push(`<a class="rt ${protonTier(p.tier)}" href="https://www.protondb.com/app/${d.appid}" target="_blank" rel="noopener" title="ProtonDB community rating${p.total ? " · " + p.total + " reports" : ""}${p.trending && p.trending !== p.tier ? " · trending " + p.trending : ""}">ProtonDB <b>${esc(name)}</b>${p.total ? ` <small>${fmtCount(p.total)}</small>` : ""}</a>`);
+  }
+  if (r.steam) {
+    const label = steamLabel(r.steam.score, r.steam.count);
+    out.push(`<a class="rt ${tier(r.steam.score)}" href="${esc(r.steam.url || d.steamUrl)}" target="_blank" rel="noopener" title="${esc(label || "Steam reviews")}${r.steam.count ? " · " + r.steam.count.toLocaleString() + " reviews" : ""}">Steam <b>${r.steam.score}%</b>${label ? ` <small>${esc(label)}</small>` : ""}</a>`);
+  }
+  if (r.metacritic) out.push(`<a class="rt ${tier(r.metacritic.score)}" href="${esc(r.metacritic.url || "#")}" target="_blank" rel="noopener" title="Metascore${r.metacritic.count ? " · " + r.metacritic.count + " critics" : ""}">Metacritic <b>${r.metacritic.score}</b></a>`);
+  if (r.opencritic) out.push(`<a class="rt ${tier(r.opencritic.score)}" href="${esc(r.opencritic.url || "#")}" target="_blank" rel="noopener" title="OpenCritic top critic average${r.opencritic.count ? " · " + r.opencritic.count + " critics" : ""}">OpenCritic <b>${r.opencritic.score}</b></a>`);
+  return out.length ? `<div class="ratings">${out.join("")}</div>` : "";
+}
+
+function render() {
+  const deals = SNAP ? SNAP.deals : [];
+  const counts = Object.fromEntries(KINDS.map((k) => [k.k, 0]));
+  deals.forEach((d) => counts[d.kind]++);
+  const fresh = deals.filter((d) => d.new).length;
+
+  if (SNAP) {
+    $("headline").innerHTML = `<b class="num">${deals.length}</b> deal${deals.length === 1 ? "" : "s"} across <b class="num">${SNAP.wishlistCount}</b> wishlist games` +
+      (fresh ? `. <b class="num">${fresh}</b> ${fresh === 1 ? "is" : "are"} new since your last alert.` : ".");
+    const nc = nextCheck();
+    $("source").textContent = `Checked ${when(SNAP.generatedAt)}` +
+      (nc ? ` · next check ${nc.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "");
+  }
+
+  $("kinds").innerHTML = KINDS.filter((k) => counts[k.k]).map((k) =>
+    `<button type="button" class="kind" data-kind="${k.k}" aria-pressed="${F.kinds.has(k.k)}"><b class="num">${counts[k.k]}</b>${k.label}</button>`).join("");
+
+  const shops = [...new Set(deals.map((d) => d.shop).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const cur = F.shop;
+  $("shop").innerHTML = `<option value="">All stores</option>` + shops.map((s) => `<option${s === cur ? " selected" : ""}>${esc(s)}</option>`).join("");
+  const tagCounts = new Map();
+  deals.forEach((d) => (d.tags || []).forEach((t) => tagCounts.set(t, (tagCounts.get(t) || 0) + 1)));
+  const tags = [...tagCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (F.tag && !tagCounts.has(F.tag)) F.tag = "";
+  $("tag").innerHTML = `<option value="">All tags</option>` +
+    tags.map(([t, n]) => `<option value="${esc(t)}"${t === F.tag ? " selected" : ""}>${esc(t)} (${n})</option>`).join("");
+  $("tag").disabled = !tags.length;
+  $("sort").value = F.sort; $("newOnly").checked = F.newOnly; $("minRating").value = String(F.minRating); $("deckF").value = F.deck;
+
+  const q = F.q.trim().toLowerCase();
+  let list = deals.filter((d) =>
+    (!F.kinds.size || F.kinds.has(d.kind)) && (!F.shop || d.shop === F.shop) &&
+    (!F.newOnly || d.new) && (!q || d.title.toLowerCase().includes(q) || (d.tags || []).some((t) => t.toLowerCase().includes(q))) &&
+    (!F.minRating || (steamScore(d) ?? -1) >= F.minRating) &&
+    (!F.tag || (d.tags || []).includes(F.tag)) && deckOk(d));
+  const ts = (d) => (d.expiry ? new Date(d.expiry).getTime() : Infinity);
+  const cmp = {
+    rank: (a, b) => (a.rank || 1e9) - (b.rank || 1e9),
+    cut: (a, b) => (b.cut || 0) - (a.cut || 0),
+    price: (a, b) => ((a.price && a.price.amount) ?? 1e9) - ((b.price && b.price.amount) ?? 1e9),
+    ending: (a, b) => ts(a) - ts(b),
+    // Steam score first; ties broken by review count, so 97% of 40k beats 97% of 12.
+    rating: (a, b) => ((steamScore(b) ?? -1) - (steamScore(a) ?? -1)) ||
+                      ((((b.reviews || {}).steam || {}).count || 0) - (((a.reviews || {}).steam || {}).count || 0)),
+  }[F.sort];
+  list.sort((a, b) => cmp(a, b) || a.title.localeCompare(b.title));
+
+  if (!SNAP) {
+    $("groups").innerHTML = `<div class="empty">No deals list yet. The watcher writes it ${scheduleText()}, or choose <b>Check now</b> to build it.</div>`;
+    return;
+  }
+  if (!list.length) { $("groups").innerHTML = `<div class="empty">No deals match these filters.</div>`; return; }
+
+  $("groups").innerHTML = KINDS.map((k) => {
+    const rows = list.filter((d) => d.kind === k.k);
+    if (!rows.length) return "";
+    return `<section class="group"><h2>${k.label} <small class="num">${rows.length}</small></h2><div class="list">${rows.map(row).join("")}</div></section>`;
+  }).join("");
+}
+
+function row(d) {
+  const meta = [];
+  if (d.kind === "bundle") meta.push(esc(d.why.replace(/^In /, "")));
+  else meta.push(esc(d.shop));
+  if (d.kind !== "bundle") {
+    if (d.newLow) meta.push(`<span class="low">New all-time low (was ${money(d.low)})</span>`);
+    else if (d.isLow) meta.push(`<span class="low">All-time low</span>`);
+    else if (d.low) meta.push(`All-time low ${money(d.low)}`);
+  }
+  if (d.kind === "target") meta.push(esc(d.why));
+  const yr = d.released ? d.released.slice(0, 4) : "";
+  if (yr || d.developer) meta.push(esc([d.developer, yr].filter(Boolean).join(", ")));
+  const e = endsIn(d.expiry);
+  if (e) meta.push(`<span class="${e.soon ? "soon" : ""}">${e.text}</span>`);
+
+  let price;
+  if (d.kind === "bundle") {
+    price = `<div class="price"><span class="now num">${d.price ? money(d.price) : "—"}</span><span class="was">${d.price ? "bundle tier" : "see bundle"}</span></div>`;
+  } else {
+    const was = d.regular && d.regular.amount > (d.price && d.price.amount) ? `<s class="num">${money(d.regular)}</s>` : "";
+    price = `<div class="price"><span class="now num">${money(d.price)}</span><span class="was">${was}${d.cut ? `<span class="cut num">−${d.cut}%</span>` : ""}</span></div>`;
+  }
+  const pills = (d.new ? `<span class="pill new">New</span>` : "") + (d.newLow ? `<span class="pill nl">Lowest ever</span>` : "") +
+    (d.earlyAccess ? `<span class="pill ea">Early Access</span>` : "");
+  const tagsHtml = (d.tags || []).length ? `<div class="tags">${d.tags.map((t) =>
+    `<button type="button" class="tag${t === F.tag ? " on" : ""}" data-tag="${esc(t)}" title="Show only ${esc(t)}">${esc(t)}</button>`).join("")}</div>` : "";
+  const dealLabel = d.kind === "bundle" ? "View bundle" : `Buy at ${d.shop}`;
+  return `<div class="deal">
+    <span class="rank num" title="Wishlist rank">#${d.rank}</span>
+    <div class="main">
+      <div class="name"><a class="t" href="${esc(d.url || d.steamUrl)}" target="_blank" rel="noopener">${esc(d.title)}</a>${pills}</div>
+      <div class="meta">${meta.map((m) => `<span>${m}</span>`).join("")}</div>
+      ${tagsHtml}
+      ${ratingsHtml(d)}
+    </div>
+    ${price}
+    <div class="links">
+      ${d.url ? `<a class="primary" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(dealLabel)}</a>` : ""}
+      <a href="${esc(d.steamUrl)}" target="_blank" rel="noopener">Steam page</a>
+    </div>
+  </div>`;
+}
+
+async function load() {
+  try {
+    const r = await fetch("api/deals", { cache: "no-store" });
+    SNAP = r.ok ? await r.json() : null;
+  } catch (e) { SNAP = null; }
+  render();
+  if (!SNAP) $("headline").textContent = "Your wishlist deals appear here after the first check.";
+}
+
+let toastT;
+function toast(msg, ms = 3500) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), ms); }
+
+$("checkBtn").addEventListener("click", async () => {
+  const b = $("checkBtn"); b.disabled = true;
+  const label = b.lastChild.textContent; b.lastChild.textContent = " Checking…";
+  try {
+    const r = await fetch("api/deals/refresh", { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+    await load();
+    toast("Prices updated. No notification was sent.");
+  } catch (e) {
+    toast("Couldn't check prices: " + e.message, 6000);
+  } finally { b.disabled = false; b.lastChild.textContent = label; }
+});
+$("kinds").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-kind]"); if (!b) return;
+  const k = b.dataset.kind; F.kinds.has(k) ? F.kinds.delete(k) : F.kinds.add(k); render();
+});
+let qt; $("q").addEventListener("input", (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 120); });
+$("shop").addEventListener("change", (e) => { F.shop = e.target.value; render(); });
+$("sort").addEventListener("change", (e) => { F.sort = e.target.value; saveF(); render(); });
+$("newOnly").addEventListener("change", (e) => { F.newOnly = e.target.checked; saveF(); render(); });
+$("minRating").addEventListener("change", (e) => { F.minRating = Number(e.target.value) || 0; saveF(); render(); });
+$("tag").addEventListener("change", (e) => { F.tag = e.target.value; render(); });
+$("deckF").addEventListener("change", (e) => { F.deck = e.target.value; saveF(); render(); });
+$("groups").addEventListener("click", (e) => {
+  const t = e.target.closest("button[data-tag]"); if (!t) return;
+  F.tag = F.tag === t.dataset.tag ? "" : t.dataset.tag; render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+$("schedText").textContent = scheduleText();
+load();
+})();
+</script>
+

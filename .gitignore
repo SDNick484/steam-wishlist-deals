@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+# Local data and secrets: never commit these.
+*.ini
+!examples/*.ini
+.steam-env
+steam_backlog*.json
+deals.json
+triage.json
+state.json
+*.log

@@ -1,0 +1,12 @@
+# Twice-daily checks (local time). Keep these in sync with --check-times on the web service.
+# Enable with: systemctl enable --now wishlist-deals.timer
+[Unit]
+Description=Twice-daily Steam wishlist deal check
+
+[Timer]
+OnCalendar=*-*-* 10:40:00
+OnCalendar=*-*-* 19:40:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

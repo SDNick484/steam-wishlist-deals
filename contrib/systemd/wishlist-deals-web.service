@@ -1,0 +1,16 @@
+# Deals page web server. Copy to /etc/systemd/system/, adjust paths/user, then:
+#   systemctl daemon-reload && systemctl enable --now wishlist-deals-web
+[Unit]
+Description=Steam Wishlist Deals page
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=steam
+ExecStart=/usr/bin/python3 /opt/steam-wishlist-deals/deals_server.py --port 8485 --data /home/steam/exports --check-times 10:40,19:40
+# Optional header link to another page: add --nav "Backlog=https://backlog.example.com/"
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
