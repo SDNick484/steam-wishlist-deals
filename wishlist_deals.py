@@ -251,6 +251,18 @@ def best_deal(deals: list[dict], only: set[str], exclude: set[str]) -> dict | No
     return min(ok, key=lambda d: d["price"]["amountInt"]) if ok else None
 
 
+def is_low(deal: dict, low: dict | None, tolerance_pct: float = 0.0, min_cut_pct: float = 0.0) -> bool:
+    """Is this deal at (or within tolerance_pct of) the all-time low, and really on sale?
+
+    The one test behind both the "all-time low" alert and the deals page's low flag. A deal
+    needs a discount (cut > 0) of at least min_cut_pct; a game at full price is never "a low",
+    even when full price is its lowest price ever.
+    """
+    cut = deal.get("cut", 0)
+    return bool(cut > 0 and cut >= min_cut_pct and low
+                and deal["price"]["amountInt"] <= low["amountInt"] * (1 + tolerance_pct / 100))
+
+
 def evaluate(games: list[dict], prices: dict[str, dict], bundles: list[dict], cfg) -> dict[str, dict]:
     """Return {alert_key: alert} for everything that qualifies right now."""
     rules = cfg["rules"]
@@ -287,8 +299,7 @@ def evaluate(games: list[dict], prices: dict[str, dict], bundles: list[dict], cf
         # One price alert per game, filed under its strongest reason: target > all-time low > deep cut.
         t = targets.get(g["appid"])
         hit_target = t is not None and price["amount"] <= t
-        hit_low = bool(d.get("cut", 0) > 0 and d.get("cut", 0) >= low_min_cut
-                       and low and price["amountInt"] <= low["amountInt"] * (1 + tol / 100))
+        hit_low = is_low(d, low, tol, low_min_cut)
         hit_cut = bool(big and d.get("cut", 0) >= big)
         if hit_target or hit_low or hit_cut:
             kind = "target" if hit_target else "low" if hit_low else "cut"
