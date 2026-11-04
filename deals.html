@@ -60,8 +60,8 @@ header{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-co
 .kinds{display:flex;flex-wrap:wrap;gap:8px}
 .kind{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:8px 12px;cursor:pointer;display:flex;align-items:baseline;gap:8px;font-weight:600;font-size:13.5px;color:var(--ink-2)}
 .kind b{font-family:var(--display);font-size:19px;color:var(--ink);font-weight:600}
-.kind[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
-.kind[aria-pressed="true"] b{color:var(--accent-ink)}
+.kind[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.kind[aria-checked="true"] b{color:var(--accent-ink)}
 
 .filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -71,6 +71,9 @@ input[type=search],select{background:var(--surface);border:1px solid var(--line-
 .check{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink-2);padding-bottom:7px;cursor:pointer}
 .check input{width:16px;height:16px;accent-color:var(--accent)}
 
+.notice{background:var(--warn-soft);color:var(--warn-ink);border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:500}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+select:disabled{opacity:.55;cursor:not-allowed}
 #groups{display:flex;flex-direction:column;gap:22px}
 section.group{display:flex;flex-direction:column;gap:10px}
 .list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -100,9 +103,19 @@ section.group{display:flex;flex-direction:column;gap:10px}
 .pill{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
 .pill.new{background:var(--accent);color:var(--on-accent)}
 .pill.nl{background:var(--good-soft);color:var(--good-ink)}
+.tgt{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:6px;font-size:12.5px;color:var(--ink-2)}
+.tgt .state b{color:var(--ink);font-weight:700}
+.tgt .good{color:var(--good-ink);font-weight:600} .tgt .above{color:var(--warn-ink);font-weight:600} .tgt .muted{color:var(--muted)}
+.tgt .cur{color:var(--muted);font-weight:600}
+.tgt input{width:96px;padding:4px 8px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);font-size:14px}
+.tgt input[aria-invalid="true"]{border-color:var(--crit-ink)}
+.tgt .err{flex-basis:100%;color:var(--crit-ink);font-weight:600}
+.mini{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);border-radius:7px;padding:3px 10px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:28px}
+.mini:hover{border-color:var(--accent);color:var(--accent-ink)}
+.mini.primary{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
 .price{display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:92px}
 .price .now{font-family:var(--display);font-size:21px;font-weight:600;line-height:1.1}
-.price .was{font-size:12.5px;color:var(--muted)} .price .was s{margin-right:6px}
+.price .was{font-size:12.5px;color:var(--muted);text-align:right} .price .was s{margin-right:6px}
 .price .cut{color:var(--good-ink);font-weight:700}
 .links{display:flex;gap:6px}
 .links a{font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--line-strong);border-radius:8px;padding:6px 10px;white-space:nowrap;color:var(--ink-2)}
@@ -112,6 +125,7 @@ section.group{display:flex;flex-direction:column;gap:10px}
   .deal{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"main price" "links links";gap:10px 12px}
   .rank{display:none} .main{grid-area:main} .price{grid-area:price} .links{grid-area:links}
   .links a{flex:1;text-align:center}
+  .mini{min-height:36px;padding:5px 12px} .tgt input{font-size:16px;padding:6px 8px;width:110px}
 }
 .empty{background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:24px;color:var(--ink-2)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:9px;font-size:14px;max-width:min(520px,calc(100vw - 32px));box-shadow:var(--shadow);z-index:10}
@@ -133,7 +147,7 @@ footer{font-size:12.5px;color:var(--muted);max-width:90ch}
     </button>
   </header>
 
-  <div class="kinds" id="kinds" role="group" aria-label="Deal type"></div>
+  <div class="kinds" id="kinds" role="radiogroup" aria-label="Show"></div>
 
   <div class="filters">
     <div class="field grow"><label for="q">Search</label><input type="search" id="q" placeholder="Game name or tag" autocomplete="off"></div>
@@ -164,12 +178,26 @@ footer{font-size:12.5px;color:var(--muted);max-width:90ch}
         <option value="70">70% and up</option>
       </select>
     </div>
+    <div class="field"><label for="minCut">Minimum % off</label>
+      <select id="minCut">
+        <option value="0">Any</option>
+        <option value="10">10% or more</option>
+        <option value="25">25% or more</option>
+        <option value="33">33% or more</option>
+        <option value="50">50% or more</option>
+        <option value="66">66% or more</option>
+        <option value="75">75% or more</option>
+        <option value="90">90% or more</option>
+      </select>
+    </div>
     <label class="check"><input type="checkbox" id="newOnly"> New since last alert</label>
   </div>
 
+  <p class="notice" id="notice" role="status" hidden></p>
+
   <div id="groups"></div>
 
-  <footer>Prices, all-time lows, ratings and tags come from IsThereAnyDeal and cover official stores only. Deck ratings come from Valve; ProtonDB ratings are community reports. Steam ratings are the share of positive user reviews; Metacritic and OpenCritic are critic averages out of 100. Ratings and tags refresh weekly; click a tag to filter by it. "New" means the deal wasn't in a notification yet. The list updates <span id="schedText">on its schedule</span>, or when you choose Check now.</footer>
+  <footer>Prices, all-time lows, ratings and tags come from IsThereAnyDeal and cover official stores only. Deck ratings come from Valve; ProtonDB ratings are community reports. Steam ratings are the share of positive user reviews; Metacritic and OpenCritic are critic averages out of 100. Ratings and tags refresh weekly; click a tag to filter by it. "New" means the deal wasn't in a notification yet. Target prices are saved on the server and checked at every scheduled run. The list updates <span id="schedText">on its schedule</span>, or when you choose Check now.</footer>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -178,23 +206,51 @@ footer{font-size:12.5px;color:var(--muted);max-width:90ch}
 "use strict";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-const KINDS = [
+const SCOPES = [
+  { k: "all", label: "All wishlisted" },
+  { k: "sale", label: "On sale" },
+  { k: "low", label: "All-time lows" },
+  { k: "bundle", label: "In a bundle" },
+  { k: "target", label: "At or under target" },
+];
+const SCOPE_KEYS = SCOPES.map((x) => x.k);
+// The minimum-% filter only means something where a game has a price cut to compare.
+const CUT_SCOPES = new Set(["sale", "low", "target"]);
+const CUTS = [0, 10, 25, 33, 50, 66, 75, 90];
+// Used only while deals.json is from an older watcher that doesn't list every game yet.
+const LEGACY_KINDS = [
   { k: "target", label: "Under your target" },
   { k: "low", label: "All-time lows" },
   { k: "bundle", label: "In a bundle" },
   { k: "cut", label: "Deep discounts" },
 ];
-const F = { kinds: new Set(), q: "", shop: "", tag: "", deck: "", sort: "rank", newOnly: false, minRating: 0 };
+const F = { scope: "sale", q: "", shop: "", tag: "", deck: "", sort: "rank", newOnly: false, minRating: 0, minCut: 0 };
 let SNAP = null;
+let TARGETS = {}, TARGETS_OK = false;   // {appid: price} from the server; TARGETS_OK false = couldn't load them
+let INFLIGHT = 0;                       // target saves still on their way to the server
+let EDIT = null;                        // {appid, value, error} while a target is being typed
+let pendingFocus = null;                // selector to focus after the next render
+const NEWLOW = new Set();               // appids whose current price is a brand-new all-time low
+const OP = {};                          // per-game counter and queue, so the last edit wins
+const safeUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u) ? u : "");
 
-try { const s = JSON.parse(localStorage.getItem("wd-filters") || "null"); if (s) { F.sort = s.sort || "rank"; F.newOnly = !!s.newOnly; F.minRating = Number(s.minRating) || 0; F.deck = s.deck || ""; } } catch (e) {}
-function saveF() { try { localStorage.setItem("wd-filters", JSON.stringify({ sort: F.sort, newOnly: F.newOnly, minRating: F.minRating, deck: F.deck })); } catch (e) {} }
-
-function money(p) {
-  if (!p) return "";
-  const sym = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" }[p.currency] || "";
-  return sym ? sym + p.amount.toFixed(2) : p.amount.toFixed(2) + " " + (p.currency || "");
+try {
+  const s = JSON.parse(localStorage.getItem("wd-filters") || "null");
+  if (s) {
+    F.sort = s.sort || "rank"; F.newOnly = !!s.newOnly; F.minRating = Number(s.minRating) || 0; F.deck = s.deck || "";
+    if (SCOPE_KEYS.includes(s.scope)) F.scope = s.scope;
+    if (CUTS.includes(Number(s.minCut))) F.minCut = Number(s.minCut);
+  }
+} catch (e) {}
+function saveF() {
+  try { localStorage.setItem("wd-filters", JSON.stringify({ scope: F.scope, sort: F.sort, newOnly: F.newOnly, minRating: F.minRating, deck: F.deck, minCut: F.minCut })); } catch (e) {}
 }
+
+function fmt(amount, currency) {
+  const sym = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" }[currency] || "";
+  return sym ? sym + amount.toFixed(2) : amount.toFixed(2) + " " + (currency || "");
+}
+function money(p) { return p ? fmt(p.amount, p.currency) : ""; }
 function endsIn(iso) {
   if (!iso) return null;
   const days = (new Date(iso) - Date.now()) / 86400000;
@@ -282,114 +338,308 @@ function ratingsHtml(d) {
   return out.length ? `<div class="ratings">${out.join("")}</div>` : "";
 }
 
-function render() {
-  const deals = SNAP ? SNAP.deals : [];
-  const counts = Object.fromEntries(KINDS.map((k) => [k.k, 0]));
-  deals.forEach((d) => counts[d.kind]++);
-  const fresh = deals.filter((d) => d.new).length;
-
-  if (SNAP) {
-    $("headline").innerHTML = `<b class="num">${deals.length}</b> deal${deals.length === 1 ? "" : "s"} across <b class="num">${SNAP.wishlistCount}</b> wishlist games` +
-      (fresh ? `. <b class="num">${fresh}</b> ${fresh === 1 ? "is" : "are"} new since your last alert.` : ".");
-    const nc = nextCheck();
-    $("source").textContent = `Checked ${when(SNAP.generatedAt)}` +
-      (nc ? ` · next check ${nc.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "");
+// ---- what a "game" looks like to the page. Older deals.json files only list alert deals; adapt those.
+const hasGames = () => !!(SNAP && Array.isArray(SNAP.games));
+function fromDeal(d) {
+  if (d.kind === "bundle") {
+    return { ...d, legacyKind: "bundle", inBundle: true, onSale: true, isLow: false, cut: 0, price: null, regular: null,
+             shop: "", url: null, expiry: null,
+             bundle: { title: String(d.why || "").replace(/^In /, "") || "a bundle", price: d.price, url: d.url, expiry: d.expiry } };
   }
+  return { ...d, legacyKind: d.kind, inBundle: false, onSale: true, bundle: null };
+}
+const targetOf = (g) => (TARGETS_OK ? (TARGETS[g.appid] ?? null) : (g.target ?? null));
+const atTarget = (g) => { const t = targetOf(g); return t != null && !!g.price && g.price.amount <= t; };
+const bundleOnly = (g) => g.inBundle && !(g.cut > 0);       // on sale only because a bundle has it
+const cutOf = (g) => g.cut || 0;
+const curOf = (g) => (g.price && g.price.currency) || (SNAP && SNAP.currency) || "USD";
+const newLowOf = (g) => !!g.newLow || NEWLOW.has(g.appid);
+const endsAt = (g) => { const e = bundleOnly(g) ? g.bundle.expiry : (g.cut > 0 ? g.expiry : null); return e ? new Date(e).getTime() : Infinity; };
 
-  $("kinds").innerHTML = KINDS.filter((k) => counts[k.k]).map((k) =>
-    `<button type="button" class="kind" data-kind="${k.k}" aria-pressed="${F.kinds.has(k.k)}"><b class="num">${counts[k.k]}</b>${k.label}</button>`).join("");
+function inScope(g, scope) {
+  return scope === "all" ? true : scope === "sale" ? !!g.onSale : scope === "low" ? !!g.isLow
+       : scope === "bundle" ? !!g.inBundle : atTarget(g);
+}
+const cutOk = (g, scope) => !F.minCut || !CUT_SCOPES.has(scope) || cutOf(g) >= F.minCut;
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  const shops = [...new Set(deals.map((d) => d.shop).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const cur = F.shop;
-  $("shop").innerHTML = `<option value="">All stores</option>` + shops.map((s) => `<option${s === cur ? " selected" : ""}>${esc(s)}</option>`).join("");
+function render() {
+  // The list is rebuilt each time; keep keyboard focus on the same control.
+  const a = document.activeElement;
+  if (!pendingFocus && a && a.dataset) {
+    const k = ["tgtOpen", "tgtClear", "tgtSave", "tgtCancel"].find((n) => a.dataset[n] !== undefined);
+    if (k) pendingFocus = `[data-${k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())}="${a.dataset[k]}"]`;
+  }
+  const legacy = !!SNAP && !hasGames();
+  const all = !SNAP ? [] : legacy ? SNAP.deals.map(fromDeal) : SNAP.games;
+  const fresh = all.filter((g) => g.new).length;
+  const q = F.q.trim().toLowerCase();
+
+  // Dropdown choices come from every game, so they don't shrink as you filter.
+  const shops = [...new Set(all.map((g) => g.shop).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  $("shop").innerHTML = `<option value="">All stores</option>` + shops.map((x) => `<option${x === F.shop ? " selected" : ""}>${esc(x)}</option>`).join("");
   const tagCounts = new Map();
-  deals.forEach((d) => (d.tags || []).forEach((t) => tagCounts.set(t, (tagCounts.get(t) || 0) + 1)));
+  all.forEach((g) => (g.tags || []).forEach((t) => tagCounts.set(t, (tagCounts.get(t) || 0) + 1)));
   const tags = [...tagCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   if (F.tag && !tagCounts.has(F.tag)) F.tag = "";
   $("tag").innerHTML = `<option value="">All tags</option>` +
     tags.map(([t, n]) => `<option value="${esc(t)}"${t === F.tag ? " selected" : ""}>${esc(t)} (${n})</option>`).join("");
   $("tag").disabled = !tags.length;
   $("sort").value = F.sort; $("newOnly").checked = F.newOnly; $("minRating").value = String(F.minRating); $("deckF").value = F.deck;
+  $("minCut").value = String(F.minCut);
+  const cutApplies = legacy || CUT_SCOPES.has(F.scope);
+  $("minCut").disabled = !cutApplies;
+  $("minCut").title = cutApplies ? "" : "The % filter applies to On sale, All-time lows and At or under target. Games in a bundle or the full wishlist have no single % off to compare.";
 
-  const q = F.q.trim().toLowerCase();
-  let list = deals.filter((d) =>
-    (!F.kinds.size || F.kinds.has(d.kind)) && (!F.shop || d.shop === F.shop) &&
-    (!F.newOnly || d.new) && (!q || d.title.toLowerCase().includes(q) || (d.tags || []).some((t) => t.toLowerCase().includes(q))) &&
-    (!F.minRating || (steamScore(d) ?? -1) >= F.minRating) &&
-    (!F.tag || (d.tags || []).includes(F.tag)) && deckOk(d));
-  const ts = (d) => (d.expiry ? new Date(d.expiry).getTime() : Infinity);
+  // Everything except the scope and the % filter.
+  const base = all.filter((g) =>
+    (!F.shop || g.shop === F.shop) && (!F.newOnly || g.new) &&
+    (!q || g.title.toLowerCase().includes(q) || (g.tags || []).some((t) => t.toLowerCase().includes(q))) &&
+    (!F.minRating || (steamScore(g) ?? -1) >= F.minRating) && (!F.tag || (g.tags || []).includes(F.tag)) && deckOk(g));
+
+  const counts = Object.fromEntries(SCOPES.map((x) => [x.k, base.filter((g) => inScope(g, x.k) && cutOk(g, x.k)).length]));
+  $("kinds").hidden = legacy;
+  $("kinds").innerHTML = legacy ? "" : SCOPES.map((x) =>
+    `<button type="button" class="kind" role="radio" aria-checked="${F.scope === x.k}" tabindex="${F.scope === x.k ? 0 : -1}" data-scope="${x.k}"><b class="num">${counts[x.k]}</b>${x.label}</button>`).join("");
+
+  let list = legacy ? base.filter((g) => !F.minCut || cutOf(g) >= F.minCut || g.legacyKind === "bundle")
+                    : base.filter((g) => inScope(g, F.scope) && cutOk(g, F.scope));
   const cmp = {
     rank: (a, b) => (a.rank || 1e9) - (b.rank || 1e9),
-    cut: (a, b) => (b.cut || 0) - (a.cut || 0),
+    cut: (a, b) => cutOf(b) - cutOf(a),
     price: (a, b) => ((a.price && a.price.amount) ?? 1e9) - ((b.price && b.price.amount) ?? 1e9),
-    ending: (a, b) => ts(a) - ts(b),
+    ending: (a, b) => endsAt(a) - endsAt(b),
     // Steam score first; ties broken by review count, so 97% of 40k beats 97% of 12.
     rating: (a, b) => ((steamScore(b) ?? -1) - (steamScore(a) ?? -1)) ||
                       ((((b.reviews || {}).steam || {}).count || 0) - (((a.reviews || {}).steam || {}).count || 0)),
   }[F.sort];
   list.sort((a, b) => cmp(a, b) || a.title.localeCompare(b.title));
 
+  // Headline
+  if (SNAP) {
+    const total = hasGames() ? SNAP.games.length : SNAP.wishlistCount;
+    const onSale = all.filter((g) => g.onSale).length;
+    const newTxt = fresh ? `. <b class="num">${fresh}</b> ${fresh === 1 ? "is" : "are"} new since your last alert.` : ".";
+    let h;
+    if (legacy) {
+      h = `<b class="num">${all.length}</b> deal${all.length === 1 ? "" : "s"} across <b class="num">${SNAP.wishlistCount}</b> wishlist games${newTxt}`;
+    } else {
+      const shown = `<b class="num">${list.length}</b> of <b class="num">${total}</b> wishlist games`;
+      h = F.scope === "all" ? `${shown} · <b class="num">${onSale}</b> on sale`
+        : F.scope === "sale" ? `${shown} are on sale`
+        : F.scope === "low" ? `${shown} are at an all-time low`
+        : F.scope === "bundle" ? `${shown} are in a live bundle`
+        : `${shown} are at or under your target price`;
+      h += newTxt;
+    }
+    $("headline").innerHTML = h;
+    const nc = nextCheck();
+    $("source").textContent = `Checked ${when(SNAP.generatedAt)}` +
+      (SNAP.untracked ? ` · ${SNAP.untracked} not on IsThereAnyDeal` : "") +
+      (nc ? ` · next check ${nc.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "");
+  }
+
+  // Notice: old data, targets unavailable, or rows hidden by the % filter.
+  const notes = [];
+  if (legacy) notes.push("This list only has games with alerts. Run Check now to load all wishlist games.");
+  if (SNAP && !TARGETS_OK) notes.push("Target prices couldn't be loaded, so targets can't be edited right now. Showing the targets from the last check.");
+  if (!legacy && F.minCut && (F.scope === "sale" || F.scope === "target")) {
+    const hidden = base.filter((g) => inScope(g, F.scope) && !cutOk(g, F.scope));
+    if (F.scope === "sale") {
+      const n = hidden.filter(bundleOnly).length;
+      if (n) notes.push(`${plural(n, "bundle-only deal", "bundle-only deals")} hidden by the % filter.`);
+    } else if (hidden.length) {
+      notes.push(`${plural(hidden.length, "game", "games")} at or under target hidden by the % filter (no discount that deep).`);
+    }
+  }
+  $("notice").hidden = !notes.length;
+  $("notice").textContent = notes.join(" ");
+
+  // Rows
   if (!SNAP) {
     $("groups").innerHTML = `<div class="empty">No deals list yet. The watcher writes it ${scheduleText()}, or choose <b>Check now</b> to build it.</div>`;
-    return;
+  } else if (!list.length) {
+    $("groups").innerHTML = `<div class="empty">${emptyText(legacy)}</div>`;
+  } else if (legacy) {
+    $("groups").innerHTML = LEGACY_KINDS.map((k) => {
+      const rows = list.filter((g) => g.legacyKind === k.k);
+      return rows.length ? `<section class="group"><h2>${k.label} <small class="num">${rows.length}</small></h2><div class="list">${rows.map(row).join("")}</div></section>` : "";
+    }).join("");
+  } else {
+    $("groups").innerHTML = `<section class="group"><div class="list">${list.map(row).join("")}</div></section>`;
   }
-  if (!list.length) { $("groups").innerHTML = `<div class="empty">No deals match these filters.</div>`; return; }
-
-  $("groups").innerHTML = KINDS.map((k) => {
-    const rows = list.filter((d) => d.kind === k.k);
-    if (!rows.length) return "";
-    return `<section class="group"><h2>${k.label} <small class="num">${rows.length}</small></h2><div class="list">${rows.map(row).join("")}</div></section>`;
-  }).join("");
+  applyFocus();
 }
 
-function row(d) {
-  const meta = [];
-  if (d.kind === "bundle") meta.push(esc(d.why.replace(/^In /, "")));
-  else meta.push(esc(d.shop));
-  if (d.kind !== "bundle") {
-    if (d.newLow) meta.push(`<span class="low">New all-time low (was ${money(d.low)})</span>`);
-    else if (d.isLow) meta.push(`<span class="low">All-time low</span>`);
-    else if (d.low) meta.push(`All-time low ${money(d.low)}`);
+function emptyText(legacy) {
+  if (legacy) return "No deals match these filters.";
+  const filtered = F.q || F.shop || F.tag || F.deck || F.minRating || F.newOnly || F.minCut;
+  if (filtered) return "No games match these filters.";
+  return { all: "Your wishlist is empty.", sale: "Nothing on your wishlist is on sale right now.",
+           low: "Nothing on your wishlist is at an all-time low right now.", bundle: "None of your wishlist games are in a live bundle.",
+           target: "No game is at or under its target price. Use <b>Set target</b> on any game to add one." }[F.scope];
+}
+
+function applyFocus() {
+  if (!pendingFocus) return;
+  const el = document.querySelector(pendingFocus), sel = pendingFocus;
+  pendingFocus = null;
+  if (!el) return;
+  el.focus();
+  if (sel.startsWith("[data-tgt-input") && EDIT && EDIT.select) { el.select(); EDIT.select = false; }
+}
+
+// ---- target price control on every row
+function tgtHtml(g) {
+  if (!TARGETS_OK) return "";
+  const t = targetOf(g), title = esc(g.title);
+  if (EDIT && EDIT.appid === g.appid) {
+    const sym = fmt(0, curOf(g)).replace(/0\.00/, "").trim();
+    return `<div class="tgt editing"><label class="sr" for="tg-${g.appid}">Target price for ${title}</label>` +
+      `${sym ? `<span class="cur" aria-hidden="true">${esc(sym)}</span>` : ""}` +
+      `<input id="tg-${g.appid}" data-tgt-input="${g.appid}" type="text" inputmode="decimal" autocomplete="off" value="${esc(EDIT.value)}" placeholder="0.00"` +
+      ` aria-invalid="${EDIT.error ? "true" : "false"}"${EDIT.error ? ` aria-describedby="te-${g.appid}"` : ""}>` +
+      `<button type="button" class="mini primary" data-tgt-save="${g.appid}" aria-label="Save target price for ${title}">Save</button>` +
+      `<button type="button" class="mini" data-tgt-cancel="${g.appid}" aria-label="Cancel editing the target price for ${title}">Cancel</button>` +
+      `${EDIT.error ? `<span class="err" id="te-${g.appid}" role="alert">${esc(EDIT.error)}</span>` : ""}</div>`;
   }
-  if (d.kind === "target") meta.push(esc(d.why));
-  const yr = d.released ? d.released.slice(0, 4) : "";
-  if (yr || d.developer) meta.push(esc([d.developer, yr].filter(Boolean).join(", ")));
-  const e = endsIn(d.expiry);
+  if (t == null) {
+    return `<div class="tgt"><button type="button" class="mini" data-tgt-open="${g.appid}" aria-label="Set a target price for ${title}">Set target</button></div>`;
+  }
+  const cur = curOf(g);
+  let state;
+  if (!g.price) state = `<span class="muted">no price to compare</span>`;
+  else if (g.price.amount <= t) state = `<span class="good">${fmt(Math.round((t - g.price.amount) * 100) / 100, cur)} under</span>`;
+  else state = `<span class="above">${fmt(Math.round((g.price.amount - t) * 100) / 100, cur)} above</span>`;
+  return `<div class="tgt"><span class="state">Target <b class="num">${fmt(t, cur)}</b> · ${state}</span>` +
+    `<button type="button" class="mini" data-tgt-open="${g.appid}" aria-label="Edit the target price for ${title}, currently ${fmt(t, cur)}">Edit</button>` +
+    `<button type="button" class="mini" data-tgt-clear="${g.appid}" aria-label="Clear the target price for ${title}">Clear</button></div>`;
+}
+
+function parsePrice(text) {
+  const t = String(text).trim().replace(/^[\s$€£¥]+/, "").replace(",", ".");
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return null;
+  const n = Math.round(Number(t) * 100) / 100;
+  return Number.isFinite(n) && n > 0 && n <= 1000 ? n : null;
+}
+
+function openEdit(appid) {
+  const t = TARGETS[appid];
+  EDIT = { appid, value: t == null ? "" : String(t), error: "", select: true };
+  pendingFocus = `[data-tgt-input="${appid}"]`;
+  render();
+}
+function cancelEdit(appid) { EDIT = null; pendingFocus = `[data-tgt-open="${appid}"]`; render(); }
+function submitEdit(appid) {
+  if (!EDIT || EDIT.appid !== appid) return;
+  const price = parsePrice(EDIT.value);
+  if (price == null) {
+    EDIT.error = "Enter a price from 0.01 to 1000.";
+    pendingFocus = `[data-tgt-input="${appid}"]`;
+    return render();
+  }
+  EDIT = null;
+  pendingFocus = `[data-tgt-open="${appid}"]`;
+  saveTarget(appid, price);
+}
+
+// Optimistic: show the change now, send it, and put the old value back if the server says no.
+// Requests for one game go out one at a time, so the last click wins even on a slow link.
+function saveTarget(appid, price) {
+  const key = String(appid), prev = key in TARGETS ? TARGETS[key] : null;
+  const op = OP[key] = OP[key] || { n: 0, chain: Promise.resolve() };
+  const mine = ++op.n;
+  if (price == null) delete TARGETS[key]; else TARGETS[key] = price;
+  render();
+  INFLIGHT++;
+  op.chain = op.chain.then(async () => {
+    try {
+      const r = await fetch(`api/deals/targets/${appid}`, price == null ? { method: "DELETE" } :
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ price }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+      if (op.n === mine) {
+        if (price == null) delete TARGETS[key]; else TARGETS[key] = j.price;   // the server rounds to cents
+        toast(price == null ? "Target cleared." : "Target saved. It's checked at the next scheduled run.", 2500);
+      }
+    } catch (e) {
+      if (op.n === mine) {
+        if (prev == null) delete TARGETS[key]; else TARGETS[key] = prev;
+      }
+      toast("Couldn't save the target: " + e.message, 6000);
+    } finally {
+      INFLIGHT--;
+      render();
+    }
+  });
+}
+
+function row(g) {
+  const bo = bundleOnly(g);
+  const meta = [];
+  if (bo) meta.push(esc(g.bundle.title)); else if (g.shop) meta.push(esc(g.shop));
+  if (!bo && g.price) {
+    if (newLowOf(g)) meta.push(`<span class="low">New all-time low (was ${money(g.low)})</span>`);
+    else if (g.isLow) meta.push(`<span class="low">All-time low</span>`);
+    else if (g.low) meta.push(`All-time low ${money(g.low)}`);
+  }
+  if (g.inBundle && !bo) meta.push(`Also in ${esc(g.bundle.title)}${g.bundle.price ? ` (${money(g.bundle.price)} tier)` : ""}`);
+  const yr = g.released ? g.released.slice(0, 4) : "";
+  if (yr || g.developer) meta.push(esc([g.developer, yr].filter(Boolean).join(", ")));
+  const e = endsIn(bo ? g.bundle.expiry : (g.cut > 0 ? g.expiry : null));
   if (e) meta.push(`<span class="${e.soon ? "soon" : ""}">${e.text}</span>`);
 
   let price;
-  if (d.kind === "bundle") {
-    price = `<div class="price"><span class="now num">${d.price ? money(d.price) : "—"}</span><span class="was">${d.price ? "bundle tier" : "see bundle"}</span></div>`;
+  if (bo) {
+    price = `<div class="price"><span class="now num">${g.bundle.price ? money(g.bundle.price) : "—"}</span><span class="was">${g.bundle.price ? "bundle tier" : "see bundle"}</span></div>`;
+  } else if (g.price) {
+    const was = g.regular && g.regular.amount > g.price.amount ? `<s class="num">${money(g.regular)}</s>` : "";
+    price = `<div class="price"><span class="now num">${money(g.price)}</span><span class="was">${was}${g.cut ? `<span class="cut num">−${g.cut}%</span>` : (g.onSale ? "" : "not on sale")}</span></div>`;
   } else {
-    const was = d.regular && d.regular.amount > (d.price && d.price.amount) ? `<s class="num">${money(d.regular)}</s>` : "";
-    price = `<div class="price"><span class="now num">${money(d.price)}</span><span class="was">${was}${d.cut ? `<span class="cut num">−${d.cut}%</span>` : ""}</span></div>`;
+    price = `<div class="price"><span class="now num">—</span><span class="was">No current price on ITAD</span></div>`;
   }
-  const pills = (d.new ? `<span class="pill new">New</span>` : "") + (d.newLow ? `<span class="pill nl">Lowest ever</span>` : "") +
-    (d.earlyAccess ? `<span class="pill ea">Early Access</span>` : "");
-  const tagsHtml = (d.tags || []).length ? `<div class="tags">${d.tags.map((t) =>
+  const pills = (g.new ? `<span class="pill new">New</span>` : "") + (newLowOf(g) ? `<span class="pill nl">Lowest ever</span>` : "") +
+    (g.earlyAccess ? `<span class="pill ea">Early Access</span>` : "");
+  const tagsHtml = (g.tags || []).length ? `<div class="tags">${g.tags.map((t) =>
     `<button type="button" class="tag${t === F.tag ? " on" : ""}" data-tag="${esc(t)}" title="Show only ${esc(t)}">${esc(t)}</button>`).join("")}</div>` : "";
-  const dealLabel = d.kind === "bundle" ? "View bundle" : `Buy at ${d.shop}`;
+  const dealUrl = bo ? safeUrl(g.bundle.url) : (g.price ? safeUrl(g.url) : "");
+  const dealLabel = bo ? "View bundle" : `Buy at ${g.shop}`;
+  const steam = safeUrl(g.steamUrl);
   return `<div class="deal">
-    <span class="rank num" title="Wishlist rank">#${d.rank}</span>
+    <span class="rank num" title="Wishlist rank">#${g.rank}</span>
     <div class="main">
-      <div class="name"><a class="t" href="${esc(d.url || d.steamUrl)}" target="_blank" rel="noopener">${esc(d.title)}</a>${pills}</div>
+      <div class="name"><a class="t" href="${esc(dealUrl || steam)}" target="_blank" rel="noopener">${esc(g.title)}</a>${pills}</div>
       <div class="meta">${meta.map((m) => `<span>${m}</span>`).join("")}</div>
       ${tagsHtml}
-      ${ratingsHtml(d)}
+      ${ratingsHtml(g)}
+      ${tgtHtml(g)}
     </div>
     ${price}
     <div class="links">
-      ${d.url ? `<a class="primary" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(dealLabel)}</a>` : ""}
-      <a href="${esc(d.steamUrl)}" target="_blank" rel="noopener">Steam page</a>
+      ${dealUrl ? `<a class="primary" href="${esc(dealUrl)}" target="_blank" rel="noopener">${esc(dealLabel)}</a>` : ""}
+      <a href="${esc(steam)}" target="_blank" rel="noopener">Steam page</a>
     </div>
   </div>`;
 }
 
-async function load() {
+async function loadTargets() {
+  if (INFLIGHT) return;   // don't overwrite an edit that hasn't reached the server yet
   try {
-    const r = await fetch("api/deals", { cache: "no-store" });
-    SNAP = r.ok ? await r.json() : null;
-  } catch (e) { SNAP = null; }
+    const r = await fetch("api/deals/targets", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json(), next = {};
+    for (const [k, v] of Object.entries(j.targets || {})) if (typeof v === "number" && Number.isFinite(v)) next[k] = v;
+    TARGETS = next; TARGETS_OK = true;
+  } catch (e) { TARGETS_OK = false; }
+}
+
+async function load() {
+  const snap = fetch("api/deals", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [s] = await Promise.all([snap, loadTargets()]);
+  SNAP = s;
+  NEWLOW.clear();
+  if (SNAP) (SNAP.deals || []).forEach((d) => { if (d.newLow) NEWLOW.add(d.appid); });
   render();
   if (!SNAP) $("headline").textContent = "Your wishlist deals appear here after the first check.";
 }
@@ -410,21 +660,45 @@ $("checkBtn").addEventListener("click", async () => {
     toast("Couldn't check prices: " + e.message, 6000);
   } finally { b.disabled = false; b.lastChild.textContent = label; }
 });
-$("kinds").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-kind]"); if (!b) return;
-  const k = b.dataset.kind; F.kinds.has(k) ? F.kinds.delete(k) : F.kinds.add(k); render();
+function setScope(k) { F.scope = k; saveF(); pendingFocus = `[data-scope="${k}"]`; render(); }
+$("kinds").addEventListener("click", (e) => { const b = e.target.closest("button[data-scope]"); if (b) setScope(b.dataset.scope); });
+$("kinds").addEventListener("keydown", (e) => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  setScope(SCOPE_KEYS[(SCOPE_KEYS.indexOf(F.scope) + step + SCOPE_KEYS.length) % SCOPE_KEYS.length]);
 });
 let qt; $("q").addEventListener("input", (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 120); });
 $("shop").addEventListener("change", (e) => { F.shop = e.target.value; render(); });
 $("sort").addEventListener("change", (e) => { F.sort = e.target.value; saveF(); render(); });
 $("newOnly").addEventListener("change", (e) => { F.newOnly = e.target.checked; saveF(); render(); });
 $("minRating").addEventListener("change", (e) => { F.minRating = Number(e.target.value) || 0; saveF(); render(); });
+$("minCut").addEventListener("change", (e) => { F.minCut = Number(e.target.value) || 0; saveF(); render(); });
 $("tag").addEventListener("change", (e) => { F.tag = e.target.value; render(); });
 $("deckF").addEventListener("change", (e) => { F.deck = e.target.value; saveF(); render(); });
 $("groups").addEventListener("click", (e) => {
-  const t = e.target.closest("button[data-tag]"); if (!t) return;
-  F.tag = F.tag === t.dataset.tag ? "" : t.dataset.tag; render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const t = e.target.closest("button[data-tag]");
+  if (t) {
+    F.tag = F.tag === t.dataset.tag ? "" : t.dataset.tag; render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  const id = (a) => { const b = e.target.closest(`button[${a}]`); return b ? Number(b.getAttribute(a)) : null; };
+  let n;
+  if ((n = id("data-tgt-open")) != null) openEdit(n);
+  else if ((n = id("data-tgt-save")) != null) submitEdit(n);
+  else if ((n = id("data-tgt-cancel")) != null) cancelEdit(n);
+  else if ((n = id("data-tgt-clear")) != null) { pendingFocus = `[data-tgt-open="${n}"]`; saveTarget(n, null); }
+});
+$("groups").addEventListener("input", (e) => {
+  if (e.target.matches("input[data-tgt-input]") && EDIT) { EDIT.value = e.target.value; if (EDIT.error) { EDIT.error = ""; e.target.setAttribute("aria-invalid", "false"); const m = document.getElementById("te-" + EDIT.appid); if (m) m.remove(); } }
+});
+$("groups").addEventListener("keydown", (e) => {
+  const inp = e.target.closest("input[data-tgt-input]");
+  if (!inp) return;
+  const n = Number(inp.dataset.tgtInput);
+  if (e.key === "Enter") { e.preventDefault(); submitEdit(n); }
+  else if (e.key === "Escape") { e.preventDefault(); cancelEdit(n); }
 });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 $("schedText").textContent = scheduleText();
