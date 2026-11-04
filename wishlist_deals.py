@@ -52,6 +52,12 @@ PROTONDB_API = os.environ.get("WD_PROTONDB_API", "https://www.protondb.com")
 STEAM_SHOP_ID = 61
 BATCH = 200
 UA = "steam-wishlist-deals/1.0"
+# Games that have no deal yet get their Deck/ProtonDB/rating details filled in gradually: at most
+# this many per run (games with deals are always refreshed), so no single run balloons.
+META_CAP = int(os.environ.get("WD_META_CAP", "60"))
+# Used only when no price has been seen to read a currency from.
+COUNTRY_CURRENCY = {"US": "USD", "CA": "CAD", "GB": "GBP", "AU": "AUD", "DE": "EUR", "FR": "EUR", "ES": "EUR",
+                    "IT": "EUR", "NL": "EUR", "IE": "EUR", "AT": "EUR", "BE": "EUR", "FI": "EUR", "PT": "EUR"}
 
 CONFIG_PATH = os.path.expanduser(os.environ.get("WD_CONFIG", "~/.config/wishlist-deals/config.ini"))
 STATE_PATH = os.path.expanduser(os.environ.get("WD_STATE", "~/.local/state/wishlist-deals/state.json"))
@@ -83,7 +89,9 @@ bundles = true
 top_n = 0
 
 [targets]
-# Alert when a game's best price is at or under your number. Steam app id = price.
+# Legacy: target prices are now set on the deals page and stored in targets.json next to
+# deals.json. Entries here are copied into targets.json once, the first time it's missing,
+# and ignored after that. Format: steam app id = price
 # 1245620 = 20.00
 
 [home_assistant]
@@ -263,15 +271,22 @@ def is_low(deal: dict, low: dict | None, tolerance_pct: float = 0.0, min_cut_pct
                 and deal["price"]["amountInt"] <= low["amountInt"] * (1 + tolerance_pct / 100))
 
 
-def evaluate(games: list[dict], prices: dict[str, dict], bundles: list[dict], cfg) -> dict[str, dict]:
-    """Return {alert_key: alert} for everything that qualifies right now."""
+def parse_rules(cfg) -> dict:
+    """The [rules] and [itad] settings that decide what counts as a deal, parsed once."""
     rules = cfg["rules"]
-    tol = float(rules.get("low_tolerance_pct", "0") or 0)
-    low_min_cut = float(rules.get("low_min_discount_pct", "0") or 0)
-    big = float(rules.get("big_discount_pct", "0") or 0)
-    want_bundles = rules.getboolean("bundles", fallback=True)
     split = lambda s: {x.strip().lower() for x in (s or "").split(",") if x.strip()}
-    only, exclude = split(cfg["itad"].get("only_shops")), split(cfg["itad"].get("exclude_shops"))
+    return {
+        "tol": float(rules.get("low_tolerance_pct", "0") or 0),
+        "low_min_cut": float(rules.get("low_min_discount_pct", "0") or 0),
+        "big": float(rules.get("big_discount_pct", "0") or 0),
+        "want_bundles": rules.getboolean("bundles", fallback=True),
+        "only": split(cfg["itad"].get("only_shops")),
+        "exclude": split(cfg["itad"].get("exclude_shops")),
+    }
+
+
+def ini_targets(cfg) -> dict[int, float]:
+    """Target prices from the legacy [targets] section of config.ini: {steam appid: price}."""
     targets = {}
     if cfg.has_section("targets"):
         for k, v in cfg["targets"].items():
@@ -279,6 +294,20 @@ def evaluate(games: list[dict], prices: dict[str, dict], bundles: list[dict], cf
                 targets[int(k)] = float(v)
             except ValueError:
                 log(f"Ignoring target '{k} = {v}' (use: steam_app_id = price)")
+    return targets
+
+
+def evaluate(games: list[dict], prices: dict[str, dict], bundles: list[dict], cfg,
+             targets: dict[int, float] | None = None) -> dict[str, dict]:
+    """Return {alert_key: alert} for everything that qualifies right now.
+
+    targets is {steam appid: price}; None reads the legacy [targets] section of the config.
+    """
+    r = parse_rules(cfg)
+    tol, low_min_cut, big, want_bundles = r["tol"], r["low_min_cut"], r["big"], r["want_bundles"]
+    only, exclude = r["only"], r["exclude"]
+    if targets is None:
+        targets = ini_targets(cfg)
 
     now = datetime.now(timezone.utc)
     by_gid = {g["gid"]: g for g in games}
@@ -339,6 +368,109 @@ def new_alerts(current: dict[str, dict], sent: dict[str, dict]) -> list[dict]:
         if prev is None or (amt is not None and prev.get("amountInt") is not None and amt < prev["amountInt"]):
             out.append(a)
     return out
+
+
+# =========================================================================== Targets file
+
+TARGETS_VERSION = 1
+
+
+def data_dir(cfg) -> str:
+    """Directory of the deals page data: where deals.json (and targets.json) live."""
+    out = cfg["output"] if cfg.has_section("output") else {}
+    return os.path.dirname(os.path.expanduser(out.get("deals_json") or "~/exports/deals.json"))
+
+
+def targets_path(cfg) -> str:
+    return os.path.join(data_dir(cfg), "targets.json")
+
+
+def country_currency(cfg, default: str | None = None) -> str | None:
+    country = ((cfg["itad"].get("country") if cfg.has_section("itad") else "") or "US").strip().upper()
+    return COUNTRY_CURRENCY.get(country, default)
+
+
+def read_targets_file(path: str) -> dict[int, float] | None:
+    """{appid: price} from targets.json; None when the file doesn't exist.
+
+    A damaged file reads as empty (and says so) rather than stopping the run.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+        raw = doc["targets"]
+        if not isinstance(raw, dict):
+            raise ValueError("'targets' is not an object")
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        log(f"Couldn't read {path} ({e}); treating it as having no targets.")
+        return {}
+    out = {}
+    for k, v in raw.items():
+        try:
+            price = float(v)
+            if price > 0:
+                out[int(k)] = price
+        except (TypeError, ValueError):
+            log(f"Ignoring target '{k}: {v}' in {path}")
+    return out
+
+
+def create_targets_file(path: str, targets: dict[int, float], currency: str) -> bool:
+    """Create targets.json only if it doesn't exist yet. True if this call created it.
+
+    The content is written to a temp file first and then hard-linked into place, so the file
+    appears complete, and can never replace one the deals server wrote a moment earlier.
+    """
+    doc = {"version": TARGETS_VERSION, "currency": currency,
+           "targets": {str(k): round(v, 2) for k, v in sorted(targets.items())}}
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o640)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=1)
+            f.write("\n")
+        try:
+            os.link(tmp, path)
+            return True
+        except FileExistsError:
+            return False
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def load_targets(cfg, dry_run: bool = False) -> dict[int, float]:
+    """Target prices for this run: {steam appid: price}.
+
+    They live in targets.json, which the deals page edits. If it's missing and config.ini still
+    has a [targets] section, those entries move into a new targets.json (once). After that the
+    section is ignored. A dry run reads config.ini but writes nothing.
+    """
+    path = targets_path(cfg)
+    legacy = ini_targets(cfg)
+    current = read_targets_file(path)
+    if current is None and legacy:
+        if dry_run:
+            return legacy
+        try:
+            created = create_targets_file(path, legacy, country_currency(cfg, "USD"))
+        except OSError as e:
+            log(f"Couldn't create {path} ({e}); using the targets in config.ini this run.")
+            return legacy
+        if created:
+            log(f"Moved {len(legacy)} target{'s' if len(legacy) != 1 else ''} from config.ini to targets.json")
+            return legacy
+        current = read_targets_file(path) or {}  # the deals server wrote it first; its file wins
+    if current is None:
+        return {}
+    if legacy:
+        log("Ignoring [targets] in config.ini: targets are managed on the deals page (targets.json).")
+    return current
 
 
 # =========================================================================== Output
@@ -465,8 +597,81 @@ def notify_email(cfg, alerts: list[dict]) -> None:
 
 # =========================================================================== Deals page snapshot
 
-def write_snapshot(cfg, current: dict[str, dict], unsent: list[dict], wishlist_count: int, untracked: int) -> None:
-    """Save every qualifying deal as JSON for the deals web page. 'new' = not notified yet."""
+def live_bundles(bundles: list[dict], now: datetime | None = None) -> dict[str, dict]:
+    """{itad game id: its cheapest live bundle tier}, for the deals page's "In a bundle" view."""
+    now = now or datetime.now(timezone.utc)
+    best: dict[str, dict] = {}
+    rank = lambda c: (c["price"] is None, (c["price"] or {}).get("amountInt", 0))  # priced tiers first, cheapest first
+    for b in bundles:
+        exp = parse_ts(b.get("expiry"))
+        if exp and exp < now:
+            continue
+        for t in b.get("tiers") or []:
+            for bg in t.get("games") or []:
+                gid = bg.get("id")
+                cand = {"title": b.get("title") or "a bundle", "price": t.get("price"),
+                        "url": b.get("url") or b.get("details"), "expiry": b.get("expiry")}
+                if gid and (gid not in best or rank(cand) < rank(best[gid])):
+                    best[gid] = cand
+    return best
+
+
+def meta_fields(meta: dict) -> dict:
+    """The cached ratings/tags/Deck details the page shows for a game."""
+    return {"reviews": meta.get("r") or {}, "tags": meta.get("tags") or [], "released": meta.get("released"),
+            "earlyAccess": bool(meta.get("ea")), "developer": meta.get("dev"),
+            "deck": meta.get("deck"), "protondb": meta.get("proton") or {}}
+
+
+def build_games(games: list[dict], prices: dict[str, dict], bundles: list[dict], cfg, targets: dict[int, float],
+                meta_by_gid: dict[str, dict], new_appids: set[int], now: datetime | None = None) -> list[dict]:
+    """One entry per tracked wishlist game, with the flags the deals page's views filter on.
+
+    Unlike the alerts, which are one per qualifying deal, every game appears here: on sale or
+    not, priced or not. ITAD returns a game's regular price too when no store discounts it, so
+    price is set whenever any allowed store sells it. A game ITAD lists no store for has price None.
+    """
+    r = parse_rules(cfg)
+    in_bundle = live_bundles(bundles, now) if r["want_bundles"] else {}
+    out = []
+    for g in games:
+        p = prices.get(g["gid"]) or {}
+        d = best_deal(p.get("deals"), r["only"], r["exclude"])
+        low = ((p.get("historyLow") or {}).get("all")) or None
+        price = d["price"] if d else None
+        cut = (d.get("cut") or 0) if d else 0
+        bundle = in_bundle.get(g["gid"])
+        target = targets.get(g["appid"])
+        out.append({
+            "appid": g["appid"], "title": g["title"], "rank": g["rank"],
+            "steamUrl": f"https://store.steampowered.com/app/{g['appid']}/",
+            "price": price, "regular": d.get("regular") if d else None, "cut": cut,
+            "shop": d["shop"]["name"] if d else "", "url": d.get("url") if d else None,
+            "expiry": d.get("expiry") if d else None, "low": low,
+            "onSale": bool(cut > 0 or bundle), "isLow": bool(d and is_low(d, low, r["tol"], r["low_min_cut"])),
+            "inBundle": bundle is not None, "bundle": bundle,
+            "target": target, "atTarget": bool(target is not None and price and price["amount"] <= target),
+            "new": g["appid"] in new_appids,
+            **meta_fields(meta_by_gid.get(g["gid"]) or {}),
+        })
+    return out
+
+
+def snapshot_currency(games: list[dict], cfg) -> str | None:
+    """Currency of the prices on the page: the first price seen, else the configured country's."""
+    for g in games:
+        if g.get("price") and g["price"].get("currency"):
+            return g["price"]["currency"]
+    return country_currency(cfg)
+
+
+def write_snapshot(cfg, current: dict[str, dict], unsent: list[dict], wishlist_count: int, untracked: int,
+                   games: list[dict] | None = None, currency: str | None = None) -> None:
+    """Save every qualifying deal (and, with games, every tracked wishlist game) as JSON for the page.
+
+    'new' = not notified yet. "deals" is the list of alert-qualifying deals; "games" has one
+    entry per tracked game for the page's views.
+    """
     out_cfg = cfg["output"] if cfg.has_section("output") else {}
     path = os.path.expanduser(out_cfg.get("deals_json") or "~/exports/deals.json")
     unsent_ids = {id(a) for a in unsent}
@@ -486,6 +691,9 @@ def write_snapshot(cfg, current: dict[str, dict], unsent: list[dict], wishlist_c
         })
     snap = {"generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "wishlistCount": wishlist_count, "untracked": untracked, "deals": deals}
+    if games is not None:
+        snap["games"] = games
+        snap["currency"] = currency
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".tmp"
@@ -553,17 +761,31 @@ def fetch_protondb(appid: int) -> dict:
             "trending": str(data.get("trendingTier") or "").lower() or None}
 
 
-def refresh_reviews(itad, st: dict, pairs: list[tuple[str, int]]) -> None:
-    """pairs = [(itad_id, steam_appid)] for games that currently have deals."""
+def refresh_reviews(itad, st: dict, pairs: list[tuple[str, int]], extra: list[tuple[str, int]] | None = None,
+                    extra_cap: int | None = None) -> None:
+    """pairs = [(itad_id, steam_appid)] for games that currently have deals: all stale ones are refreshed.
+
+    extra = the other wishlist games (best-ranked first). They're refreshed too, but at most
+    extra_cap per run, so the first run after an upgrade isn't a few hundred lookups at once.
+    """
     now = time.time()
-    # Entries cached before tags or Deck status were added lack those keys; refresh them too.
-    stale = [(g, a) for g, a in dict.fromkeys(pairs)
-             if now - (st["reviews"].get(g) or {}).get("t", 0) > REVIEW_TTL
-             or "tags" not in (st["reviews"].get(g) or {})
-             or (st["reviews"].get(g) or {}).get("deck") is None]  # missing, or Steam was unreachable
+
+    def is_stale(gid: str) -> bool:
+        entry = st["reviews"].get(gid) or {}
+        # Entries cached before tags or Deck status were added lack those keys; refresh them too.
+        return now - entry.get("t", 0) > REVIEW_TTL or "tags" not in entry or entry.get("deck") is None  # None: Steam was unreachable
+
+    stale = [(g, a) for g, a in dict.fromkeys(pairs) if is_stale(g)]
+    if extra:
+        seen = {g for g, _ in stale} | {g for g, _ in pairs}
+        cap = META_CAP if extra_cap is None else extra_cap
+        more = [(g, a) for g, a in dict.fromkeys(extra) if g not in seen and is_stale(g)]
+        stale += more[:cap]
+        if len(more) > cap:
+            log(f"{len(more) - cap} more wishlist games will get ratings and Deck status on later runs.")
     if not stale:
         return
-    log(f"Updating ratings, tags and Deck status for {len(stale)} games with deals...")
+    log(f"Updating ratings, tags and Deck status for {len(stale)} games...")
     for i, (gid, appid) in enumerate(stale, 1):
         info = itad.info(gid)
         deck = fetch_deck(appid)
@@ -676,18 +898,18 @@ def main() -> None:
     gids = [g["gid"] for g in games]
     prices = itad.prices(gids)
     bundles = itad.bundles(gids) if cfg["rules"].getboolean("bundles", fallback=True) else []
-    current = evaluate(games, prices, bundles, cfg)
-    fresh = list(current.values()) if args.all else new_alerts(current, st["sent"])
+    targets = load_targets(cfg, dry_run=args.dry_run)
+    current = evaluate(games, prices, bundles, cfg, targets)
+    unsent = new_alerts(current, st["sent"])
+    fresh = list(current.values()) if args.all else unsent
     gid_of = {g["appid"]: g["gid"] for g in games}
-    refresh_reviews(itad, st, [(gid_of[a["appid"]], a["appid"]) for a in current.values() if a["appid"] in gid_of])
+    refresh_reviews(itad, st, [(gid_of[a["appid"]], a["appid"]) for a in current.values() if a["appid"] in gid_of],
+                    extra=[(g["gid"], g["appid"]) for g in games])
     save_state(st)
     for a in current.values():
-        meta = st["reviews"].get(gid_of.get(a["appid"])) or {}
-        a["reviews"] = meta.get("r") or {}
-        a["tags"], a["released"] = meta.get("tags") or [], meta.get("released")
-        a["earlyAccess"], a["developer"] = bool(meta.get("ea")), meta.get("dev")
-        a["deck"], a["protondb"] = meta.get("deck"), meta.get("proton") or {}
-    write_snapshot(cfg, current, new_alerts(current, st["sent"]), len(appids), untracked)
+        a.update(meta_fields(st["reviews"].get(gid_of.get(a["appid"])) or {}))
+    page_games = build_games(games, prices, bundles, cfg, targets, st["reviews"], {a["appid"] for a in unsent})
+    write_snapshot(cfg, current, unsent, len(appids), untracked, page_games, snapshot_currency(page_games, cfg))
     if args.snapshot_only:
         return
 

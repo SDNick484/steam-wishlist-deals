@@ -1,0 +1,484 @@
+[
+ {
+  "appid": 1001,
+  "cut": 50,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": true,
+  "key": "deal:1001",
+  "kind": "low",
+  "low": {
+   "amount": 10.0,
+   "amountInt": 1000,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 10.0,
+   "amountInt": 1000,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 1,
+  "regular": {
+   "amount": 20.0,
+   "amountInt": 2000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Steam",
+  "steamUrl": "https://store.steampowered.com/app/1001/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "At Low",
+  "url": "https://example.com/steam",
+  "why": "All-time low"
+ },
+ {
+  "appid": 1005,
+  "cut": 0,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": false,
+  "key": "deal:1005",
+  "kind": "target",
+  "low": {
+   "amount": 20.0,
+   "amountInt": 2000,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 20.0,
+   "amountInt": 2000,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 5,
+  "regular": {
+   "amount": 20.0,
+   "amountInt": 2000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Steam",
+  "steamUrl": "https://store.steampowered.com/app/1005/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Regular Price Low",
+  "url": "https://example.com/steam",
+  "why": "Under your $25.00 target"
+ },
+ {
+  "appid": 1006,
+  "cut": 70,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": true,
+  "key": "deal:1006",
+  "kind": "target",
+  "low": {
+   "amount": 9.0,
+   "amountInt": 900,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 9.0,
+   "amountInt": 900,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 6,
+  "regular": {
+   "amount": 30.0,
+   "amountInt": 3000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Steam",
+  "steamUrl": "https://store.steampowered.com/app/1006/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Target Hit",
+  "url": "https://example.com/steam",
+  "why": "Under your $10.00 target"
+ },
+ {
+  "appid": 1008,
+  "cut": 70,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": false,
+  "key": "deal:1008",
+  "kind": "cut",
+  "low": {
+   "amount": 6.0,
+   "amountInt": 600,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 12.0,
+   "amountInt": 1200,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 8,
+  "regular": {
+   "amount": 40.0,
+   "amountInt": 4000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Steam",
+  "steamUrl": "https://store.steampowered.com/app/1008/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Deep Cut",
+  "url": "https://example.com/steam",
+  "why": "70% off"
+ },
+ {
+  "appid": 1010,
+  "cut": 80,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": true,
+  "key": "deal:1010",
+  "kind": "low",
+  "low": {
+   "amount": 8.0,
+   "amountInt": 800,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 8.0,
+   "amountInt": 800,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 10,
+  "regular": {
+   "amount": 40.0,
+   "amountInt": 4000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Fanatical",
+  "steamUrl": "https://store.steampowered.com/app/1010/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Shop Filter",
+  "url": "https://example.com/fanatical",
+  "why": "All-time low"
+ },
+ {
+  "appid": 1015,
+  "cut": 70,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": true,
+  "key": "deal:1015",
+  "kind": "low",
+  "low": {
+   "amount": 6.0,
+   "amountInt": 600,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 6.0,
+   "amountInt": 600,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 15,
+  "regular": {
+   "amount": 20.0,
+   "amountInt": 2000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Steam",
+  "steamUrl": "https://store.steampowered.com/app/1015/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Deal And Bundle",
+  "url": "https://example.com/steam",
+  "why": "All-time low"
+ },
+ {
+  "appid": 1016,
+  "cut": 80,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": true,
+  "key": "deal:1016",
+  "kind": "low",
+  "low": {
+   "amount": 6.0,
+   "amountInt": 600,
+   "currency": "USD"
+  },
+  "new": true,
+  "newLow": true,
+  "price": {
+   "amount": 4.0,
+   "amountInt": 400,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 16,
+  "regular": {
+   "amount": 20.0,
+   "amountInt": 2000,
+   "currency": "USD"
+  },
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Steam",
+  "steamUrl": "https://store.steampowered.com/app/1016/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "New Low",
+  "url": "https://example.com/steam",
+  "why": "All-time low"
+ },
+ {
+  "appid": 1013,
+  "cut": null,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": false,
+  "key": "bundle:b1:1013",
+  "kind": "bundle",
+  "low": null,
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 9.0,
+   "amountInt": 900,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 13,
+  "regular": null,
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Humble Bundle",
+  "steamUrl": "https://store.steampowered.com/app/1013/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Bundle Only",
+  "url": "https://example.com/bundle/b1",
+  "why": "In Space Bundle"
+ },
+ {
+  "appid": 1015,
+  "cut": null,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": false,
+  "key": "bundle:b1:1015",
+  "kind": "bundle",
+  "low": null,
+  "new": true,
+  "newLow": false,
+  "price": {
+   "amount": 15.0,
+   "amountInt": 1500,
+   "currency": "USD"
+  },
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 15,
+  "regular": null,
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Humble Bundle",
+  "steamUrl": "https://store.steampowered.com/app/1015/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "Deal And Bundle",
+  "url": "https://example.com/bundle/b1",
+  "why": "In Space Bundle"
+ },
+ {
+  "appid": 1011,
+  "cut": null,
+  "deck": 3,
+  "developer": "Example Studio",
+  "earlyAccess": false,
+  "expiry": "2099-01-01T00:00:00Z",
+  "isLow": false,
+  "key": "bundle:b3:1011",
+  "kind": "bundle",
+  "low": null,
+  "new": true,
+  "newLow": false,
+  "price": null,
+  "protondb": {
+   "tier": "gold",
+   "total": 100,
+   "trending": "gold"
+  },
+  "rank": 11,
+  "regular": null,
+  "released": "2021-05-01",
+  "reviews": {
+   "steam": {
+    "count": 1234,
+    "score": 90,
+    "url": "https://example.com/r"
+   }
+  },
+  "shop": "Humble Bundle",
+  "steamUrl": "https://store.steampowered.com/app/1011/",
+  "tags": [
+   "Action",
+   "Indie"
+  ],
+  "title": "No Deals",
+  "url": "https://example.com/bundle/b3",
+  "why": "In No Price Bundle"
+ }
+]
