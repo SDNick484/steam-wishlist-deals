@@ -1,0 +1,2156 @@
+{
+ "big50": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1008": {
+   "appid": 1008,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": false,
+   "kind": "cut",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 12.0,
+    "amountInt": 1200,
+    "currency": "USD"
+   },
+   "rank": 8,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deep Cut",
+   "url": "https://example.com/steam",
+   "why": "70% off"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "combo": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1002": {
+   "appid": 1002,
+   "cut": 48,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.5,
+    "amountInt": 1050,
+    "currency": "USD"
+   },
+   "rank": 2,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Near Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "target",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "Under your $10.00 target"
+  },
+  "deal:1008": {
+   "appid": 1008,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": false,
+   "kind": "cut",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 12.0,
+    "amountInt": 1200,
+    "currency": "USD"
+   },
+   "rank": 8,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deep Cut",
+   "url": "https://example.com/steam",
+   "why": "70% off"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "defaults": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "exclude_shops": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "min_cut40": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "no_bundles": {
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "only_shops": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "targets": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1005": {
+   "appid": 1005,
+   "cut": 0,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": false,
+   "kind": "target",
+   "low": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "rank": 5,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Regular Price Low",
+   "url": "https://example.com/steam",
+   "why": "Under your $25.00 target"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "target",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "Under your $10.00 target"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ },
+ "tolerance10": {
+  "bundle:b1:1013": {
+   "appid": 1013,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 13,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Bundle Only",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b1:1015": {
+   "appid": 1015,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": {
+    "amount": 15.0,
+    "amountInt": 1500,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/bundle/b1",
+   "why": "In Space Bundle"
+  },
+  "bundle:b3:1011": {
+   "appid": 1011,
+   "cut": null,
+   "expiry": "2099-01-01T00:00:00Z",
+   "kind": "bundle",
+   "low": null,
+   "price": null,
+   "rank": 11,
+   "regular": null,
+   "shop": "Humble Bundle",
+   "title": "No Deals",
+   "url": "https://example.com/bundle/b3",
+   "why": "In No Price Bundle"
+  },
+  "deal:1001": {
+   "appid": 1001,
+   "cut": 50,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "rank": 1,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "At Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1002": {
+   "appid": 1002,
+   "cut": 48,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 10.5,
+    "amountInt": 1050,
+    "currency": "USD"
+   },
+   "rank": 2,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Near Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1004": {
+   "appid": 1004,
+   "cut": 10,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 18.0,
+    "amountInt": 1800,
+    "currency": "USD"
+   },
+   "rank": 4,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Small Cut Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1006": {
+   "appid": 1006,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 9.0,
+    "amountInt": 900,
+    "currency": "USD"
+   },
+   "rank": 6,
+   "regular": {
+    "amount": 30.0,
+    "amountInt": 3000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Target Hit",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1010": {
+   "appid": 1010,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 8.0,
+    "amountInt": 800,
+    "currency": "USD"
+   },
+   "rank": 10,
+   "regular": {
+    "amount": 40.0,
+    "amountInt": 4000,
+    "currency": "USD"
+   },
+   "shop": "Fanatical",
+   "title": "Shop Filter",
+   "url": "https://example.com/fanatical",
+   "why": "All-time low"
+  },
+  "deal:1015": {
+   "appid": 1015,
+   "cut": 70,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "rank": 15,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Deal And Bundle",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1016": {
+   "appid": 1016,
+   "cut": 80,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 6.0,
+    "amountInt": 600,
+    "currency": "USD"
+   },
+   "new_low": true,
+   "price": {
+    "amount": 4.0,
+    "amountInt": 400,
+    "currency": "USD"
+   },
+   "rank": 16,
+   "regular": {
+    "amount": 20.0,
+    "amountInt": 2000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "New Low",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  },
+  "deal:1017": {
+   "appid": 1017,
+   "cut": 30,
+   "expiry": "2099-01-01T00:00:00Z",
+   "is_low": true,
+   "kind": "low",
+   "low": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "new_low": false,
+   "price": {
+    "amount": 7.0,
+    "amountInt": 700,
+    "currency": "USD"
+   },
+   "rank": 17,
+   "regular": {
+    "amount": 10.0,
+    "amountInt": 1000,
+    "currency": "USD"
+   },
+   "shop": "Steam",
+   "title": "Bad Target",
+   "url": "https://example.com/steam",
+   "why": "All-time low"
+  }
+ }
+}

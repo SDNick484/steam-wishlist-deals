@@ -97,7 +97,9 @@ bundles = true
 top_n = 0
 
 [targets]
-# Alert when a game's best price is at or under your number. Steam app id = price.
+# Legacy: target prices are now set on the deals page and stored in targets.json next to
+# deals.json. Entries here are copied into targets.json once, the first time it's missing,
+# and ignored after that. Format: steam app id = price
 # 1245620 = 20.00
 
 [home_assistant]

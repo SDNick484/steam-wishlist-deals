@@ -6,7 +6,12 @@ Standard library only. Serves:
   GET  /                    the deals page (also at /deals)
   GET  /api/deals           the latest deals snapshot written by wishlist_deals.py
   POST /api/deals/refresh   re-run the watcher quietly (no notifications) to refresh the snapshot
+  GET    /api/deals/targets          the per-game target prices (targets.json in the data directory)
+  PUT    /api/deals/targets/APPID    set one: body {"price": 12.5}
+  DELETE /api/deals/targets/APPID    clear one
   GET  /healthz             "ok"
+Every /api/deals/... route also answers under /deals/api/deals/..., so one path rule on a shared
+hostname ("/deals" and "/api/deals" go here) covers the page and everything it calls.
 
 There is no authentication. Bind it to your LAN or a VPN, or put it behind an
 authenticating proxy (for example Cloudflare Access); don't expose it directly.
@@ -22,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import pwd
 import re
@@ -40,6 +46,44 @@ SKELETON_HEAD = (
 )
 SKELETON_TAIL = "</body></html>"
 
+TARGETS_RE = re.compile(r"^(?:/deals)?/api/deals/targets(?:/([^/]*))?$")
+MAX_BODY = 1024          # bytes; a target is one small JSON object
+MAX_TARGETS = 5000
+MAX_PRICE = 1000.0
+
+
+class BadRequest(Exception):
+    """A request the client got wrong; the message is safe to send back."""
+
+
+class TargetsUnreadable(Exception):
+    """targets.json exists but isn't valid. Writes stop so the file isn't overwritten."""
+
+
+def _reject_constant(name):
+    raise ValueError(f"{name} is not a number")
+
+
+def parse_appid(text: str) -> int:
+    if not re.fullmatch(r"[0-9]{1,10}", text or "") or int(text) < 1:
+        raise BadRequest("app id must be a positive whole number")
+    return int(text)
+
+
+def parse_price(raw: bytes) -> float:
+    """The price from a PUT body {"price": number}, rounded to cents."""
+    try:
+        doc = json.loads(raw.decode("utf-8"), parse_constant=_reject_constant)
+    except (UnicodeDecodeError, ValueError):
+        raise BadRequest("body must be JSON like {\"price\": 12.5}")
+    price = doc.get("price") if isinstance(doc, dict) else None
+    if isinstance(price, bool) or not isinstance(price, (int, float)) or not math.isfinite(price):
+        raise BadRequest("price must be a number")
+    price = round(float(price), 2)
+    if price <= 0 or price > MAX_PRICE:
+        raise BadRequest(f"price must be more than 0 and at most {MAX_PRICE:g}")
+    return price
+
 
 def config_script(cfg: dict) -> str:
     """Expose server settings (page links, check times) to the page as window.APP_CONFIG."""
@@ -54,6 +98,67 @@ class App:
         self.deals = os.path.join(data_dir, "deals.json")
         self.head = SKELETON_HEAD.replace("{config}", config_script({"nav": nav, "checkTimes": check_times}))
         self.refresh_lock = threading.Lock()
+        self.targets_file = os.path.join(data_dir, "targets.json")
+        self.targets_lock = threading.Lock()  # one read-modify-write at a time
+
+    # ---- target prices. The watcher reads targets.json; this server is the only thing that edits it.
+
+    def _read_targets(self) -> dict | None:
+        """The parsed file, or None if there isn't one yet."""
+        try:
+            with open(self.targets_file, encoding="utf-8") as f:
+                doc = json.load(f)
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError):
+            raise TargetsUnreadable()
+        if not isinstance(doc, dict) or not isinstance(doc.get("targets"), dict):
+            raise TargetsUnreadable()
+        return doc
+
+    def _currency(self) -> str:
+        """Currency for a new targets file: whatever the deals snapshot uses."""
+        try:
+            with open(self.deals, encoding="utf-8") as f:
+                cur = json.load(f).get("currency")
+            if isinstance(cur, str) and re.fullmatch(r"[A-Z]{3}", cur):
+                return cur
+        except (OSError, ValueError, AttributeError):
+            pass
+        return "USD"
+
+    def _write_targets(self, doc: dict) -> None:
+        tmp = self.targets_file + ".tmp"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o640)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=1)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, self.targets_file)
+
+    def get_targets(self) -> dict:
+        with self.targets_lock:
+            return self._read_targets() or {"targets": {}}
+
+    def set_target(self, appid: int, price: float) -> dict:
+        with self.targets_lock:
+            doc = self._read_targets() or {"version": 1, "currency": self._currency(), "targets": {}}
+            key = str(appid)
+            if key not in doc["targets"] and len(doc["targets"]) >= MAX_TARGETS:
+                raise BadRequest(f"too many targets (the limit is {MAX_TARGETS})")
+            previous = doc["targets"].get(key)
+            doc["targets"][key] = price
+            self._write_targets(doc)
+        return {"appid": appid, "price": price, "previous": previous}
+
+    def clear_target(self, appid: int) -> dict:
+        with self.targets_lock:
+            doc = self._read_targets()
+            previous = (doc or {"targets": {}})["targets"].pop(str(appid), None)
+            if doc is not None and previous is not None:
+                self._write_targets(doc)
+        return {"appid": appid, "previous": previous}
 
     def page_bytes(self) -> bytes:
         with open(self.page, "rb") as f:
@@ -109,11 +214,60 @@ def make_handler(app: App):
                         return self.send(200, f.read())
                 except FileNotFoundError:
                     return self.json(404, {"error": "no deals snapshot yet"})
+            m = TARGETS_RE.match(path)
+            if m and m.group(1) is None:
+                return self.targets_call(app.get_targets)
             if path == "/healthz":
                 return self.send(200, b"ok", "text/plain")
             self.json(404, {"error": "not found"})
 
         do_HEAD = do_GET
+
+        def targets_call(self, fn, *args) -> None:
+            try:
+                return self.json(200, fn(*args))
+            except BadRequest as e:
+                return self.json(400, {"error": str(e)})
+            except TargetsUnreadable:
+                return self.json(500, {"error": "targets.json can't be read; fix or remove it on the server"})
+            except OSError as e:
+                sys.stderr.write(f"targets: {e}\n")
+                return self.json(500, {"error": "couldn't save the target"})
+
+        def target_route(self):
+            """(appid_text) when the path is /api/deals/targets/<id>, else None."""
+            m = TARGETS_RE.match(self.path.split("?", 1)[0])
+            return m.group(1) if m and m.group(1) is not None else None
+
+        def read_body(self) -> bytes:
+            ctype = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+            if ctype != "application/json":
+                raise BadRequest("send the body as application/json")
+            try:
+                n = int(self.headers.get("Content-Length") or "")
+            except ValueError:
+                raise BadRequest("a request body is required")
+            if n < 1:
+                raise BadRequest("a request body is required")
+            if n > MAX_BODY:
+                raise BadRequest(f"body too large (the limit is {MAX_BODY} bytes)")
+            return self.rfile.read(n)
+
+        def do_PUT(self):
+            text = self.target_route()
+            if text is None:
+                return self.json(404, {"error": "not found"})
+
+            def go():
+                appid = parse_appid(text)
+                return app.set_target(appid, parse_price(self.read_body()))
+            return self.targets_call(go)
+
+        def do_DELETE(self):
+            text = self.target_route()
+            if text is None:
+                return self.json(404, {"error": "not found"})
+            return self.targets_call(lambda: app.clear_target(parse_appid(text)))
 
         def do_POST(self):
             if self.path.split("?", 1)[0] in ("/api/deals/refresh", "/deals/api/deals/refresh"):

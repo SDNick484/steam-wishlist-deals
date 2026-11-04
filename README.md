@@ -5,17 +5,26 @@ Watches your Steam wishlist for deals worth acting on, sends one digest to your 
 **What triggers an alert:**
 - **All-time low:** the best price is at or below the lowest price ever. An optional tolerance and a minimum discount filter out small first sales.
 - **Live bundle:** the game is in a bundle at Humble, Fanatical, IndieGala and other stores, with the cheapest tier that includes it.
-- **Your target price:** the price is at or under a number you set for that game.
+- **Your target price:** the price is at or under a number you set for that game, on the deals page.
 - **Deep discount:** optional; anything at least N% off.
 
 Each game alerts once, under its strongest reason. It alerts again only if the price drops further, or after the sale ends and comes back.
 
-**The deals page** shows each deal's price, discount, store, previous all-time low and sale end date. It also shows:
+**The deals page** lists your whole wishlist, not only the games that alerted. Pick a view:
+- **All wishlisted:** every tracked game, with its current price or "No current price on ITAD".
+- **On sale** (the default): any game with a discount or a live bundle.
+- **All-time lows**, **In a bundle** and **At or under target.**
+
+Each view button shows its count under your other filters. **Minimum % off** (10 to 90) narrows On sale, All-time lows and At or under target. It's greyed out in All wishlisted and In a bundle, and bundle-only games are hidden while it's set, with a note saying how many. Your view and minimum are remembered in the browser.
+
+Each row shows price, discount, store, previous all-time low and sale end date. It also shows:
 - Steam, Metacritic and OpenCritic ratings
 - the game's top Steam-style tags
 - Steam Deck compatibility (Valve's rating plus ProtonDB's community tier)
 
-You can filter by deal type, store, tag, Steam rating and Deck compatibility, and sort by wishlist rank, discount, price, end date or rating. A **Check now** button refreshes prices without sending a notification.
+You can also filter by store, tag, Steam rating and Deck compatibility, and sort by wishlist rank, discount, price, end date or rating. A **Check now** button refreshes prices without sending a notification.
+
+**Target prices** are set on the page. Every row has **Set target** (or **Edit**): type a price, press Enter to save or Esc to cancel, and **Clear** removes it. The row shows how far the price is under or above the target. Targets are saved on the server in `targets.json`, next to `deals.json`, and the watcher alerts on them at the next scheduled run. Changes show immediately, and the page puts the old value back with a message if a save fails.
 
 The project uses only Python's standard library, and the page is a single HTML file.
 
@@ -24,7 +33,7 @@ The project uses only Python's standard library, and the page is a single HTML f
 | File | What it does |
 |---|---|
 | `wishlist_deals.py` | The watcher: reads your wishlist, finds deals, notifies, writes `deals.json` for the page |
-| `deals_server.py` | Serves the deals page and its JSON |
+| `deals_server.py` | Serves the deals page and its JSON, and saves target prices |
 | `deals.html` | The deals page |
 | `examples/config.example.ini` | Every setting, documented |
 | `install/alpine.sh` | Installer for Alpine Linux (OpenRC); works well in a small Proxmox LXC |
@@ -84,14 +93,46 @@ See `examples/config.example.ini` for the full list.
 | `[itad] only_shops` / `exclude_shops` | Limit the stores considered, e.g. `only_shops = Steam, GOG, Humble Store, Fanatical` |
 | `[rules] low_min_discount_pct` | Ignore all-time lows smaller than this discount (new releases' first 10–20% sales) |
 | `[rules] big_discount_pct` | Also alert on any discount this deep, low or not |
-| `[targets]` | `steam_app_id = price` lines for per-game target prices |
+| `[targets]` | Legacy. Targets are set on the page; see below for how existing ones move |
 | `[home_assistant] deals_page_url` | Open the deals page when a notification is tapped |
+
+## Target prices and `targets.json`
+
+`targets.json` lives in the folder of `[output] deals_json` and looks like this:
+
+```json
+{"version": 1, "currency": "USD", "targets": {"1245620": 20.0}}
+```
+
+- **Moving from config.ini:** the first time the watcher runs and finds no `targets.json`, it copies any `[targets]` lines from `config.ini` into it and logs `Moved N targets from config.ini to targets.json`. After that it ignores `[targets]` and says so in the log. A `--dry-run` reads them without writing.
+- **After an update**, run the watcher once before opening the page, so the migration happens first: `su steam -c '/usr/bin/python3 /opt/steam-wishlist-deals/wishlist_deals.py --snapshot-only'`.
+- **Editing the file by hand** is fine; the page reads it on load. The server owns writes while it runs. A file it can't parse is reported as an error and never overwritten.
+- **Currency:** a target is in the currency the snapshot reports (`currency` in `deals.json`).
+
+The server's API, also reachable under `/deals/api/deals/...` for setups that only forward `/deals`:
+
+| Request | Result |
+|---|---|
+| `GET /api/deals/targets` | `{"version": 1, "currency": "USD", "targets": {...}}` |
+| `PUT /api/deals/targets/{appid}` with `{"price": 12.5}` | `{"appid", "price", "previous"}` |
+| `DELETE /api/deals/targets/{appid}` | `{"appid", "previous"}` |
+
+Writes need `Content-Type: application/json` and a body of at most 1 KB. The price must be above 0 and at most 1000 (rounded to cents), and there's a limit of 5,000 targets. Anything else gets a 400 with a short error.
+
+## Tests
+
+```sh
+python3 -m unittest
+```
+
+Standard library only. The tests run the watcher against local stand-ins for Steam, ITAD and ProtonDB, and check that alerts and the digest haven't changed.
 
 ## Security
 
 The server has no login.
 - **Keep it private:** bind it to your LAN or a VPN, or put it behind an authenticating reverse proxy such as Cloudflare Tunnel + Access.
 - **"Check now" runs the watcher on the server,** so don't expose the page publicly.
+- **Anyone who can open the page can change target prices**, so the same rule applies.
 - **Keys stay on the server.** API keys and tokens live only in the config file and are never sent to the page.
 
 ## Data sources

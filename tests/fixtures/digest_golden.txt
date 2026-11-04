@@ -1,0 +1,27 @@
+Under your target price
+  Regular Price Low: $20.00 at Steam (low $20.00) · Steam 90% · ends in N days
+    https://example.com/steam
+  Target Hit: $9.00 -70% at Steam (all-time low) · Steam 90% · ends in N days
+    https://example.com/steam
+
+At an all-time low
+  At Low: $10.00 -50% at Steam · Steam 90% · ends in N days
+    https://example.com/steam
+  Shop Filter: $8.00 -80% at Fanatical · Steam 90% · ends in N days
+    https://example.com/fanatical
+  Deal And Bundle: $6.00 -70% at Steam · Steam 90% · ends in N days
+    https://example.com/steam
+  New Low: $4.00 -80% at Steam (new all-time low; was $6.00) · Steam 90% · ends in N days
+    https://example.com/steam
+
+In a live bundle
+  No Deals: in No Price Bundle · Steam 90% · ends in N days
+    https://example.com/bundle/b3
+  Bundle Only: in Space Bundle ($9.00 tier) · Steam 90% · ends in N days
+    https://example.com/bundle/b1
+  Deal And Bundle: in Space Bundle ($15.00 tier) · Steam 90% · ends in N days
+    https://example.com/bundle/b1
+
+Deep discounts
+  Deep Cut: $12.00 -70% at Steam (low $6.00) · Steam 90% · ends in N days
+    https://example.com/steam
