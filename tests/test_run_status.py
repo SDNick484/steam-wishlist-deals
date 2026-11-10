@@ -421,7 +421,6 @@ class Build(unittest.TestCase):
         with open(os.path.join(self.ROOT, "deals_server.py"), encoding="utf-8") as f:
             self.assertEqual(sum(1 for ln in f if re.match(r'^BUILD = "\$Format:%h\$"$', ln)), 1)
 
-    @unittest.skipIf(shutil.which("git") is None, "git is required")
     def test_git_archive_substitutes_the_short_hash(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo, out = os.path.join(tmp, "repo"), os.path.join(tmp, "out")
