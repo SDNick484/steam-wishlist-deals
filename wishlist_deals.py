@@ -821,6 +821,148 @@ def save_state(st: dict) -> None:
     os.replace(tmp, STATE_PATH)
 
 
+# =========================================================================== Run status
+
+RUN_STATUS_FILE = "run_status.json"
+RUN_STATUS_VERSION = 1
+ERROR_CLASSES = ("steam", "itad", "notify", "config", "other")
+FAIL_NOTICE_AFTER = 3   # consecutive failed runs before the one "checks are failing" notice
+FAIL_NOTICE = "Wishlist checks are failing: {}"
+RECOVERED_NOTICE = "Wishlist checks are working again"
+
+
+class Stage:
+    """Where a run is, so a failure can be classed by the stage it happened in. Never holds error text."""
+
+    def __init__(self):
+        self.name = "config"
+        self.have_config = False   # the config file was read; only then is there a data directory to write to
+
+    def error_class(self) -> str:
+        return self.name if self.name in ERROR_CLASSES else "other"
+
+    def recording(self, args) -> bool:
+        """Dry runs and the page's quiet refresh (--snapshot-only) don't touch run_status.json."""
+        return self.have_config and not (args.dry_run or args.snapshot_only)
+
+
+def utc_stamp(when: datetime | None = None) -> str:
+    return (when or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def run_status_path(cfg) -> str:
+    return os.path.join(data_dir(cfg), RUN_STATUS_FILE)
+
+
+def read_run_status(path: str) -> dict | None:
+    """The previous run's status, or None when there is no usable file."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+        failures = doc["consecutive_failures"]
+        if not isinstance(doc, dict) or isinstance(failures, bool) or not isinstance(failures, int) or failures < 0:
+            return None
+        last_ok = doc.get("last_ok")
+        return {"last_ok": last_ok if isinstance(last_ok, str) else None, "consecutive_failures": failures}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def next_run_status(prev: dict | None, error_class: str | None, now: str) -> dict:
+    """The run_status.json content after a run. error_class None = the run succeeded."""
+    if error_class is None:
+        return {"version": RUN_STATUS_VERSION, "last_attempt": now, "last_ok": now,
+                "consecutive_failures": 0, "error_class": None}
+    return {"version": RUN_STATUS_VERSION, "last_attempt": now, "last_ok": (prev or {}).get("last_ok"),
+            "consecutive_failures": (prev or {}).get("consecutive_failures", 0) + 1,
+            "error_class": error_class if error_class in ERROR_CLASSES else "other"}
+
+
+def write_run_status(path: str, doc: dict) -> None:
+    """Atomic (temp file, then rename), mode 0640 like targets.json."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o640)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=1)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def send_notice(cfg, text: str) -> int:
+    """Send one short text through every configured channel. Returns how many delivered it; never raises."""
+    delivered = 0
+    ha = cfg["home_assistant"] if cfg.has_section("home_assistant") else {}
+    if ha.get("url"):
+        try:
+            service = ha.get("service", "").strip()
+            if not re.fullmatch(r"notify\.[a-z0-9_]+", service):
+                raise SystemExit("[home_assistant] service should look like notify.mobile_app_your_phone")
+            body = {"title": "Wishlist Deals", "message": text}
+            if ha.get("deals_page_url"):
+                body["data"] = {"url": ha["deals_page_url"], "clickAction": ha["deals_page_url"]}
+            url = ha["url"].rstrip("/") + "/api/services/" + service.replace(".", "/", 1)
+            http("POST", url, body, headers={"Authorization": f"Bearer {ha.get('token', '')}"}, retries=1)
+            delivered += 1
+        except (Exception, SystemExit) as e:
+            log(f"Home Assistant notice failed: {e}")
+    em = cfg["email"] if cfg.has_section("email") else {}
+    if em.get("host"):
+        try:
+            msg = EmailMessage()
+            msg["Subject"] = text
+            msg["From"] = em.get("from") or em.get("username")
+            msg["To"] = em.get("to") or em.get("username")
+            msg.set_content(text + "\n")
+            port = int(em.get("port", "587"))
+            ctx = ssl.create_default_context()
+            if port == 465:
+                s = smtplib.SMTP_SSL(em["host"], port, context=ctx, timeout=30)
+            else:
+                s = smtplib.SMTP(em["host"], port, timeout=30)
+                if em.get("starttls", "true").lower() in ("1", "true", "yes"):
+                    s.starttls(context=ctx)
+            with s:
+                if em.get("username"):
+                    s.login(em["username"], em.get("password", ""))
+                s.send_message(msg)
+            delivered += 1
+        except (Exception, SystemExit) as e:
+            log(f"Email notice failed: {e}")
+    return delivered
+
+
+def record_run(cfg, error_class: str | None) -> None:
+    """Write run_status.json after a real run, and send the failure / recovery notice when it is due.
+
+    One notice when the failure counter reaches FAIL_NOTICE_AFTER (not on every later failure), and one when a
+    run succeeds after a streak that long. The alert rules, the digest and state.json are not involved.
+    """
+    path = run_status_path(cfg)
+    prev = read_run_status(path)
+    doc = next_run_status(prev, error_class, utc_stamp())
+    try:
+        write_run_status(path, doc)
+    except OSError as e:
+        log(f"Couldn't write {path}: {e}")
+        return
+    if error_class is not None:
+        log(f"Run failed ({doc['error_class']}); {doc['consecutive_failures']} in a row.")
+        if doc["consecutive_failures"] == FAIL_NOTICE_AFTER:
+            send_notice(cfg, FAIL_NOTICE.format(doc["error_class"]))
+    elif prev and prev["consecutive_failures"] >= FAIL_NOTICE_AFTER:
+        send_notice(cfg, RECOVERED_NOTICE)
+
+
 # =========================================================================== Main
 
 def main() -> None:
@@ -843,8 +985,25 @@ def main() -> None:
         return
 
     cfg = configparser.ConfigParser(interpolation=None)
+    stage = Stage()
+    try:
+        error = run(args, cfg, stage)
+    except (Exception, SystemExit) as e:
+        if isinstance(e, SystemExit) and e.code in (None, 0):
+            error = None
+        else:
+            if stage.recording(args):
+                record_run(cfg, stage.error_class())
+            raise
+    if stage.recording(args):
+        record_run(cfg, error)
+
+
+def run(args, cfg, stage: "Stage") -> str | None:
+    """One watcher run. Returns None on success, or an error class when the run failed without raising."""
     if not cfg.read(args.config):
         raise SystemExit(f"No config at {args.config}. Run with --init to create one.")
+    stage.have_config = True
     for sec in ("steam", "itad", "rules"):
         if not cfg.has_section(sec):
             cfg.add_section(sec)
@@ -852,6 +1011,7 @@ def main() -> None:
     if not key or key == "YOUR_ITAD_API_KEY":
         raise SystemExit("Set [itad] key (free at https://isthereanydeal.com/apps/my/).")
 
+    stage.name = "steam"
     steamid = resolve_steamid(cfg["steam"].get("profile", ""), cfg["steam"].get("api_key") or None)
     wl = get_wishlist(steamid)
     # Steam's rank order. If priorities are a clean 0..N-1 sequence, 0 is the top pick;
@@ -860,6 +1020,7 @@ def main() -> None:
     zero_based = 0 in prios and len(set(prios)) == len(prios)
     wl.sort(key=lambda w: ((w.get("priority") if zero_based or w.get("priority") else 10**6),
                            w.get("date_added") or 0))
+    stage.name = "config"
     top_n = int(cfg["rules"].get("top_n", "0") or 0)
     if top_n:
         wl = wl[:top_n]
@@ -867,6 +1028,7 @@ def main() -> None:
     rank = {int(w["appid"]): i + 1 for i, w in enumerate(wl)}
 
     st = load_state()
+    stage.name = "itad"
     itad = ITAD(key, cfg["itad"].get("country", "US") or "US")
 
     missing = [a for a in appids if str(a) not in st["ids"]]
@@ -898,26 +1060,29 @@ def main() -> None:
     gids = [g["gid"] for g in games]
     prices = itad.prices(gids)
     bundles = itad.bundles(gids) if cfg["rules"].getboolean("bundles", fallback=True) else []
+    stage.name = "other"
     targets = load_targets(cfg, dry_run=args.dry_run)
     current = evaluate(games, prices, bundles, cfg, targets)
     unsent = new_alerts(current, st["sent"])
     fresh = list(current.values()) if args.all else unsent
     gid_of = {g["appid"]: g["gid"] for g in games}
+    stage.name = "itad"
     refresh_reviews(itad, st, [(gid_of[a["appid"]], a["appid"]) for a in current.values() if a["appid"] in gid_of],
                     extra=[(g["gid"], g["appid"]) for g in games])
     save_state(st)
+    stage.name = "other"
     for a in current.values():
         a.update(meta_fields(st["reviews"].get(gid_of.get(a["appid"])) or {}))
     page_games = build_games(games, prices, bundles, cfg, targets, st["reviews"], {a["appid"] for a in unsent})
     write_snapshot(cfg, current, unsent, len(appids), untracked, page_games, snapshot_currency(page_games, cfg))
     if args.snapshot_only:
-        return
+        return None
 
     log(f"{len(appids)} wishlist games ({untracked} not on ITAD); {len(current)} qualifying deals; {len(fresh)} new.")
     if fresh:
         print(digest_text(fresh))
     if args.dry_run:
-        return
+        return None
 
     if fresh:
         # Try every configured channel. If all of them fail, don't mark anything as sent,
@@ -935,7 +1100,7 @@ def main() -> None:
                 log(f"{name} notification failed: {e}")
         if tried and not ok:
             log("No notification was delivered; these deals will be retried next run.")
-            return
+            return "notify"
 
     # Remember what's been sent. Forget alerts that no longer qualify, so the next sale alerts again.
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -949,6 +1114,7 @@ def main() -> None:
             sent[k] = {"amountInt": amt, "at": now}
     st["sent"] = sent
     save_state(st)
+    return None
 
 
 if __name__ == "__main__":
