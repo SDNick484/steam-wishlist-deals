@@ -19,7 +19,8 @@ concurrency:
 
 jobs:
   # The watcher's evaluation, notifications, digest and state.json (pinned by golden files), the snapshot
-  # writer, targets.json and the server, plus the privacy scanner's own tests, on every supported Python.
+  # writer, targets.json, the server (same-origin guard, headers, run_status.json, deep health check), plus the
+  # privacy scanner's own tests, on every supported Python.
   # Nothing here may be skipped: any "skipped" in the output fails the job.
   tests:
     name: Unit tests (Python ${{ matrix.python-version }})
