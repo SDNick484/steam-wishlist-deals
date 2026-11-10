@@ -92,7 +92,9 @@ def cross_site_request(headers) -> bool:
 
 
 def build_id() -> str:
-    return "unknown" if BUILD.startswith("$Format") else BUILD
+    """The short commit, or "unknown" unless BUILD is a lowercase hex hash of 4 to 40 digits."""
+    text = BUILD.strip()
+    return text if re.fullmatch(r"[0-9a-f]{4,40}", text) else "unknown"
 
 
 def parse_utc(text) -> datetime | None:

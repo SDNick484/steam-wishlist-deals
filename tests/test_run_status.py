@@ -414,6 +414,15 @@ class Build(unittest.TestCase):
         self.assertTrue(mod.BUILD.startswith("$Format"))
         self.assertEqual(mod.build_id(), "unknown")
 
+    def test_build_id_accepts_only_a_lowercase_hex_hash(self):
+        mod = self.load(os.path.join(self.ROOT, "deals_server.py"))
+        for value, want in (("$Format:%h$", "unknown"), ("abc1234", "abc1234"), (" abc1234\n", "abc1234"),
+                            ("a" * 40, "a" * 40), ("a" * 41, "unknown"), ("abc", "unknown"), ("ABC1234", "unknown"),
+                            ("abc123g", "unknown"), ("", "unknown"), ("../etc", "unknown"), ("$Format", "unknown")):
+            with self.subTest(value=value):
+                mod.BUILD = value
+                self.assertEqual(mod.build_id(), want)
+
     def test_the_file_is_marked_export_subst(self):
         with open(os.path.join(self.ROOT, ".gitattributes"), encoding="utf-8") as f:
             lines = [ln.split() for ln in f if ln.strip() and not ln.startswith("#")]
