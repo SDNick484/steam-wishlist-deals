@@ -75,6 +75,7 @@ The installer sets up:
 - the config at `/home/steam/.config/wishlist-deals/config.ini` (mode 600)
 - checks at 10:40 and 19:40, as their own marked block in the `steam` user's crontab
 - the deals page as an OpenRC service on port 8485
+- log rotation for this app's own two logs (see [Log rotation](#log-rotation))
 
 It finishes with a dry run against your real wishlist. Re-running it updates the code, keeps your config, adds any newer settings with defaults, and remembers the options below.
 
@@ -84,6 +85,46 @@ Other options:
 - `DEALS_PAGE_URL`: where tapping a notification goes.
 - `NAV=Label=URL`: adds a header link, for example to [Steam Backlog Triage](https://github.com/SDNick484/steam-backlog-triage).
 - `TZ_NAME`: sets the system time zone.
+
+### Log rotation
+
+The installer runs `apk add logrotate` and writes one file, `/etc/logrotate.d/steam-wishlist-deals`, covering only this app's own logs: the deals page's `deals-server.log` and the watcher's `wishlist.log`, both in the `steam` user's `logs` directory. They rotate weekly, keep 8 rotations, compress, skip a missing or empty log, and use `copytruncate` so the running server and the cron job keep their open files. Re-running the installer rewrites that file and touches no other logrotate file.
+
+## Failed and stale runs
+
+After every run except `--dry-run` (the page's quiet **Check now** included) the watcher writes `run_status.json` next to `deals.json`, atomically and with mode 0640:
+
+```json
+{"version": 1, "last_attempt": "2026-11-10T19:40:03Z", "last_ok": "2026-11-10T19:40:03Z",
+ "consecutive_failures": 0, "error_class": null}
+```
+
+- `last_ok` stays at the last good run when a run fails. `consecutive_failures` goes back to 0 on success.
+- `error_class` is `null` after a success. After a failure it names the stage that failed and never holds error text: `steam` (the wishlist fetch), `itad` (IsThereAnyDeal), `notify` (no channel delivered the digest), `config` (a missing or bad setting) or `other`.
+- A run that finds nothing to alert on is still a success.
+
+**The deals page** shows one dismissible banner when the last run failed ("Deals data last refreshed … The last check failed (itad); see the watcher log on the server.") or when the data is over 36 hours old ("Deals data was last refreshed 40 hours ago; …"). Dismissing it lasts for that page session. Without a `run_status.json` (an older watcher, or before the first run) the page judges staleness from the time in `deals.json` and never shows the failure text.
+
+**A failure notice** goes out through your configured channels (Home Assistant and/or email) when a scheduled run takes the failure counter to 3 or more and the run before it was below 3: "Wishlist checks are failing: itad". It is sent once, not on every later failure. When a run succeeds after such a streak you get one more: "Wishlist checks are working again". **Check now** is recorded too (a success clears the banner, a failure counts) but never notifies, so if it is the run that crosses 3, no failure notice is sent for that streak. If sending the notice fails, it is logged and the run carries on. The alert rules, the digest and `state.json` behave exactly as before.
+
+**Routes** (each also answers under `/deals/...`):
+- `GET /api/deals/status` returns the file's content, or `{"version":1,"last_attempt":null,"last_ok":null,"consecutive_failures":0,"error_class":null}` when there is none.
+- `GET /healthz` still answers `ok`.
+- `GET /healthz?deep=1` answers 200 or 503 with `{"ok": true, "build": "abc1234", "last_ok": "2026-11-10T19:40:03Z", "age_seconds": 3600, "consecutive_failures": 0}`. `ok` means the last run succeeded and `last_ok` is at most 36 hours old. Without `run_status.json`, `last_ok` falls back to the modification time of `deals.json`; with neither, `ok` is false.
+- `build` is the short commit the running code came from. The installer stamps it into the installed `deals_server.py`; a `git archive` or GitHub tarball gets it through `export-subst`. A plain checkout that is run directly reports `unknown`.
+
+An example Home Assistant sensor that turns on when the deals watcher is failing or stale:
+
+```yaml
+binary_sensor:
+  - platform: rest
+    name: "Wishlist deals problem"
+    resource: http://deals.example.com:8485/healthz?deep=1
+    value_template: "{{ not value_json.ok }}"
+    device_class: problem
+    scan_interval: 900
+    timeout: 10
+```
 
 ## Settings worth knowing
 
@@ -129,7 +170,7 @@ The product needs only the Python standard library. The tests use `unittest`, an
 python3 -m unittest -v
 
 # The page in a real browser (pip install -r tests/browser/requirements.txt && playwright install chromium)
-python3 -m unittest -v tests.browser.test_page
+REQUIRE_BROWSER=1 python3 -m unittest -v tests.browser.test_page
 
 # The Alpine installer, stubbed (changes /etc and /opt: run it in a container)
 docker run --rm -v "$PWD":/src:ro python:3.12-alpine sh /src/tests/installer/check.sh
@@ -140,9 +181,9 @@ sh .github/scripts/lint.sh
 
 What each part checks:
 
-- **Unit tests** run the watcher against local stand-ins for Steam, ITAD and ProtonDB and check that alerts, the digest and `state.json` haven't changed, that `deals.json` has the shape the page expects, how `targets.json` is read and written, and every route of the server. They also include the privacy scanner's own tests.
-- **Page test** starts `deals_server.py` over a generated 60-game `deals.json` and a `targets.json`, then opens `deals.html` in Chromium at 390x844, in light and dark, at `/` and at `/deals` (no trailing slash). It checks that each scope's number matches the rows listed, the minimum % filter and its "bundle-only deals hidden" line, that a target can be set, edited and cleared with the target view updating without a reload and the value surviving one, that an older `deals.json` without `games` shows the fallback message, that there are no console errors, and that the page never scrolls sideways.
-- **Installer test** runs `install/alpine.sh` in `python:3.12-alpine` twice (and a third time with one option changed): the config and the saved options are kept, there is exactly one `BEGIN`/`END` cron block, unrelated cron lines survive, and nothing but the local health check touches the network.
+- **Unit tests** run the watcher against local stand-ins for Steam, ITAD and ProtonDB and check that alerts, the digest and `state.json` haven't changed, that `deals.json` has the shape the page expects, how `targets.json` is read and written, every route of the server, the same-origin guard on every changing route, the response headers, `run_status.json` (shape, classes, counting, the failure and recovery notices), the deep health check and the build id. They also include the privacy scanner's own tests.
+- **Page test** starts `deals_server.py` over a generated 60-game `deals.json` and a `targets.json`, then opens `deals.html` in Chromium at 390x844, in light and dark, at `/` and at `/deals` (no trailing slash). It checks that each scope's number matches the rows listed, the minimum % filter and its "bundle-only deals hidden" line, that a target can be set, edited and cleared with the target view updating without a reload and the value surviving one, that an older `deals.json` without `games` shows the fallback message, that the failed-run and stale-data banner shows, dismisses and stays hidden when healthy, that there are no console errors, and that the page never scrolls sideways.
+- **Installer test** runs `install/alpine.sh` in `python:3.12-alpine` twice (and a third time with one option changed, a fourth without git): the config and the saved options are kept, the logrotate file is written for this app's logs only and rewritten on a re-run, the build id is stamped into the installed server and never into the checkout, there is exactly one `BEGIN`/`END` cron block, unrelated cron lines survive, and nothing but the local health check touches the network.
 - **Lint** runs shellcheck on every shell script, `py_compile` on every Python file and `systemd-analyze verify` on `contrib/systemd`.
 
 CI runs on pushes to `main`, pull requests, weekly, and on demand. The unit tests run on Python 3.11 to 3.14 and fail if any test is skipped; the other jobs use one version. Every third-party action is pinned to a full commit SHA with its version in a comment, and Dependabot updates them (and the test-only Playwright pin) weekly.
@@ -165,6 +206,8 @@ Until it exists, the job runs the pattern checks only and shows a warning. Pull 
 ## Security
 
 The server has no login.
+- **Same-origin only for changes.** Every `PUT`, `POST` and `DELETE` is refused with a 403 (`{"error": "cross-site request refused"}`) when the browser's `Origin` header names a different host than the request's `Host` (including `Origin: null`), or when `Sec-Fetch-Site` is `cross-site`. That stops another web page from saving a target price or starting a check through your browser. Requests with neither header, such as `curl` or cron, are allowed. A reverse proxy has to pass the original `Host` header on, or the page's own saves are refused.
+- **Response headers.** Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` and `Content-Security-Policy: frame-ancestors 'none'` (the page can't be framed). There is no `script-src` policy because the page's script is inline.
 - **Keep it private:** bind it to your LAN or a VPN, or put it behind an authenticating reverse proxy such as Cloudflare Tunnel + Access.
 - **"Check now" runs the watcher on the server,** so don't expose the page publicly.
 - **Anyone who can open the page can change target prices**, so the same rule applies.

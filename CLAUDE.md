@@ -15,13 +15,17 @@ BusyBox crond is the primary target, systemd units are secondary.
   `state.json`. `load_targets()` reads `targets.json`
 - `deals_server.py`: serves the page and its JSON, saves target prices, re-runs the watcher quietly on
   `POST /api/deals/refresh`. `App` holds the paths, `make_handler(app)` builds the request handler
+- `run_status.json` (data dir, next to `deals.json`): written by the watcher after every real run (not
+  `--dry-run`; `--snapshot-only` is recorded too, without notices); `Stage`, `record_run()`, `next_run_status()` and `send_notice()` are in
+  `wishlist_deals.py`. The server reads it for `GET /api/deals/status` and `GET /healthz?deep=1`
 - `deals.html`: the whole page (HTML, CSS and JS in one file). It fetches relative `api/deals` and
   `api/deals/targets`
 - `install/alpine.sh`: the installer. It keeps config and data, remembers its options in
-  `/etc/steam-wishlist-deals.conf` and replaces only its own `# BEGIN/END steam-wishlist-deals` crontab block
+  `/etc/steam-wishlist-deals.conf`, replaces only its own `# BEGIN/END steam-wishlist-deals` crontab block, writes
+  only its own `/etc/logrotate.d/steam-wishlist-deals`, and stamps the build id into the installed server
 - `contrib/systemd/`: service and timer units. `examples/config.example.ini`: every setting
 - `tests/`: unit tests (`test_evaluate`, `test_snapshot`, `test_targets_file`, `test_server`,
-  `test_e2e_unchanged`, `test_privacy_scan`) with local stand-ins for Steam, ITAD and ProtonDB
+  `test_e2e_unchanged`, `test_security`, `test_run_status`, `test_privacy_scan`) with local stand-ins for Steam, ITAD and ProtonDB
   (`stub_services.py`, `helpers.py`) and golden files in `tests/fixtures/`.
   `tests/browser/` is the page test (Playwright, test-only), `tests/installer/check.sh` the installer check
 - `.github/`: `workflows/ci.yml`, `dependabot.yml`, and `scripts/` (`lint.sh`, `systemd_verify.sh`,
@@ -43,6 +47,15 @@ BusyBox crond is the primary target, systemd units are secondary.
   an existing one
 - A new top-level file that has to ship (a `.py`, `.html` or `.sh` the app needs at run time) is added to
   `install/alpine.sh`, and the PR calls it out
+- **Every mutating route goes through `cross_site_request()`** (called first in `do_PUT`, `do_POST` and
+  `do_DELETE`), and every response gets the headers in `SECURITY_HEADERS` (via `end_headers`). A new route
+  inherits both; don't bypass them. No `script-src` policy: the page's script is inline
+- **`run_status.json` has a fixed shape** (`version`, `last_attempt`, `last_ok`, `consecutive_failures`,
+  `error_class`) shared with steam-backlog-triage. `error_class` is one of steam, itad, notify, config, other
+  and never error text. The failure notice is sent when a full run takes the counter to 3 or more from below 3, the recovery
+  notice when a full run succeeds after a streak of 3 or more; quiet runs never notify
+- `BUILD` in `deals_server.py` is an `export-subst` placeholder (`.gitattributes`); the installer stamps the
+  installed copy only. Never commit a real hash into it
 - Installers stay safe to re-run. Behavior or option changes update the README in the same PR
 
 ## Commands

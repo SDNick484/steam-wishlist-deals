@@ -9,7 +9,9 @@ Standard library only. Serves:
   GET    /api/deals/targets          the per-game target prices (targets.json in the data directory)
   PUT    /api/deals/targets/APPID    set one: body {"price": 12.5}
   DELETE /api/deals/targets/APPID    clear one
+  GET  /api/deals/status    the last watcher run (run_status.json in the data directory)
   GET  /healthz             "ok"
+  GET  /healthz?deep=1      JSON: 200 when the last check succeeded and is under 36 hours old, else 503
 Every /api/deals/... route also answers under /deals/api/deals/..., so one path rule on a shared
 hostname ("/deals" and "/api/deals" go here) covers the page and everything it calls.
 
@@ -34,7 +36,9 @@ import re
 import subprocess
 import sys
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 SKELETON_HEAD = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -47,9 +51,61 @@ SKELETON_HEAD = (
 SKELETON_TAIL = "</body></html>"
 
 TARGETS_RE = re.compile(r"^(?:/deals)?/api/deals/targets(?:/([^/]*))?$")
+# Short commit the code came from. `git archive` fills this in (export-subst, see .gitattributes), and
+# install/alpine.sh stamps the installed copy. A checkout that was never archived or installed keeps the
+# placeholder, which build_id() reports as "unknown".
+BUILD = "$Format:%h$"
+STALE_AFTER = 36 * 3600     # seconds without a successful check before the data counts as stale
+RUN_STATUS_FILE = "run_status.json"
+ERROR_CLASSES = ("steam", "itad", "notify", "config", "other")
+NO_RUN_STATUS = {"version": 1, "last_attempt": None, "last_ok": None, "consecutive_failures": 0, "error_class": None}
+STATUS_RE = re.compile(r"^(?:/deals)?/api/deals/status$")
+HEALTHZ_RE = re.compile(r"^(?:/deals)?/healthz$")
+
+# Sent with every response. No script-src: the page's own inline script has to run.
+SECURITY_HEADERS = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "same-origin"),
+    ("Content-Security-Policy", "frame-ancestors 'none'"),
+)
 MAX_BODY = 1024          # bytes; a target is one small JSON object
 MAX_TARGETS = 5000
 MAX_PRICE = 1000.0
+
+
+def cross_site_request(headers) -> bool:
+    """True when a browser says this request comes from another site.
+
+    Origin present and its host[:port] is not the request's Host, or Sec-Fetch-Site is "cross-site".
+    Origin "null" counts as cross-site. Requests with neither header (curl, cron) are not cross-site.
+    """
+    origin = (headers.get("Origin") or "").strip().lower()
+    if origin:
+        host = (headers.get("Host") or "").strip().lower()
+        try:
+            origin_host = urlsplit(origin).netloc
+        except ValueError:
+            return True
+        if not origin_host or origin_host != host:
+            return True
+    return (headers.get("Sec-Fetch-Site") or "").strip().lower() == "cross-site"
+
+
+def build_id() -> str:
+    """The short commit, or "unknown" unless BUILD is a lowercase hex hash of 4 to 40 digits."""
+    text = BUILD.strip()
+    return text if re.fullmatch(r"[0-9a-f]{4,40}", text) else "unknown"
+
+
+def parse_utc(text) -> datetime | None:
+    """An ISO 8601 time like 2026-11-10T19:40:03Z (or with +00:00) as an aware datetime, else None."""
+    if not isinstance(text, str):
+        return None
+    try:
+        when = datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 
 
 class BadRequest(Exception):
@@ -99,6 +155,7 @@ class App:
         self.head = SKELETON_HEAD.replace("{config}", config_script({"nav": nav, "checkTimes": check_times}))
         self.refresh_lock = threading.Lock()
         self.targets_file = os.path.join(data_dir, "targets.json")
+        self.status_file = os.path.join(data_dir, RUN_STATUS_FILE)
         self.targets_lock = threading.Lock()  # one read-modify-write at a time
 
     # ---- target prices. The watcher reads targets.json; this server is the only thing that edits it.
@@ -160,6 +217,46 @@ class App:
                 self._write_targets(doc)
         return {"appid": appid, "previous": previous}
 
+    # ---- the watcher's last run. The watcher writes run_status.json; this server only reads it.
+
+    def run_status(self) -> dict | None:
+        """The file's content, cleaned to the documented shape; None when it is missing or unusable."""
+        try:
+            with open(self.status_file, encoding="utf-8") as f:
+                doc = json.load(f)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(doc, dict):
+            return None
+        failures = doc.get("consecutive_failures")
+        if isinstance(failures, bool) or not isinstance(failures, int) or failures < 0:
+            return None
+        text = lambda v: v if isinstance(v, str) and len(v) <= 40 else None  # noqa: E731
+        return {"version": 1, "last_attempt": text(doc.get("last_attempt")), "last_ok": text(doc.get("last_ok")),
+                "consecutive_failures": failures,
+                "error_class": doc.get("error_class") if doc.get("error_class") in ERROR_CLASSES else None}
+
+    def status_doc(self) -> dict:
+        return self.run_status() or dict(NO_RUN_STATUS)
+
+    def deep_health(self, now: datetime | None = None) -> tuple[int, dict]:
+        """(status, body) for /healthz?deep=1. Healthy = the last run succeeded and a check finished in 36 h."""
+        now = now or datetime.now(timezone.utc)
+        status = self.run_status()
+        if status is not None:
+            last_ok, failures = status["last_ok"], status["consecutive_failures"]
+        else:  # no status file (an older watcher, or none yet): the snapshot's own age stands in
+            failures = 0
+            try:
+                last_ok = datetime.fromtimestamp(os.stat(self.deals).st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except OSError:
+                last_ok = None
+        when = parse_utc(last_ok)
+        age = max(0, int((now - when).total_seconds())) if when else None
+        ok = failures == 0 and age is not None and age <= STALE_AFTER
+        return (200 if ok else 503), {"ok": ok, "build": build_id(), "last_ok": last_ok if when else None,
+                                      "age_seconds": age, "consecutive_failures": failures}
+
     def page_bytes(self) -> bytes:
         with open(self.page, "rb") as f:
             return self.head.encode() + f.read() + SKELETON_TAIL.encode()
@@ -189,6 +286,19 @@ def make_handler(app: App):
         def log_message(self, fmt, *args):
             sys.stderr.write("%s %s\n" % (self.address_string(), fmt % args))
 
+        def end_headers(self) -> None:
+            # Every response carries these, including errors the http.server module sends itself.
+            for name, value in SECURITY_HEADERS:
+                self.send_header(name, value)
+            super().end_headers()
+
+        def refuse_cross_site(self) -> bool:
+            """Send 403 and return True for a cross-site request. Called first in every mutating method."""
+            if cross_site_request(self.headers):
+                self.json(403, {"error": "cross-site request refused"})
+                return True
+            return False
+
         def send(self, status: int, body: bytes = b"", ctype: str = "application/json") -> None:
             self.send_response(status)
             self.send_header("Content-Type", ctype)
@@ -217,7 +327,12 @@ def make_handler(app: App):
             m = TARGETS_RE.match(path)
             if m and m.group(1) is None:
                 return self.targets_call(app.get_targets)
-            if path == "/healthz":
+            if STATUS_RE.match(path):
+                return self.json(200, app.status_doc())
+            if HEALTHZ_RE.match(path):
+                if "deep=1" in self.path.partition("?")[2].split("&"):
+                    status, body = app.deep_health()
+                    return self.json(status, body)
                 return self.send(200, b"ok", "text/plain")
             self.json(404, {"error": "not found"})
 
@@ -254,6 +369,8 @@ def make_handler(app: App):
             return self.rfile.read(n)
 
         def do_PUT(self):
+            if self.refuse_cross_site():
+                return
             text = self.target_route()
             if text is None:
                 return self.json(404, {"error": "not found"})
@@ -264,12 +381,16 @@ def make_handler(app: App):
             return self.targets_call(go)
 
         def do_DELETE(self):
+            if self.refuse_cross_site():
+                return
             text = self.target_route()
             if text is None:
                 return self.json(404, {"error": "not found"})
             return self.targets_call(lambda: app.clear_target(parse_appid(text)))
 
         def do_POST(self):
+            if self.refuse_cross_site():
+                return
             if self.path.split("?", 1)[0] in ("/api/deals/refresh", "/deals/api/deals/refresh"):
                 status, obj = app.refresh_deals()
                 return self.json(status, obj)

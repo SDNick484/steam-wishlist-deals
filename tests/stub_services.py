@@ -27,6 +27,8 @@ class Stub:
     def __init__(self, prices=None, bundles=None):
         self.prices = prices if prices is not None else helpers.sample_prices()
         self.bundles = bundles if bundles is not None else helpers.sample_bundles()
+        self.fail = set()          # {"steam", "itad", "notify"}: answer that service with 403 (fails at once, no retries)
+        self.notifications = []    # bodies posted to the fake Home Assistant notify service
         self.games = helpers.sample_games()
         self.gid_of = {f"app/{g['appid']}": g["gid"] for g in self.games}
         self.title_of = {g["gid"]: g["title"] for g in self.games}
@@ -50,6 +52,10 @@ class Stub:
 
             def do_GET(self):
                 path = self.path.split("?", 1)[0]
+                if path.endswith("/IWishlistService/GetWishlist/v1/") and "steam" in stub.fail:
+                    return self.send_error(403)
+                if path == "/games/info/v2" and "itad" in stub.fail:
+                    return self.send_error(403)
                 if path.endswith("/IWishlistService/GetWishlist/v1/"):
                     appids = [g["appid"] for g in stub.games] + list(UNTRACKED_APPIDS)
                     return self.reply({"response": {"items": [
@@ -70,6 +76,13 @@ class Stub:
             def do_POST(self):
                 path = self.path.split("?", 1)[0]
                 data = self.body()
+                if path.startswith("/api/services/notify/"):
+                    if "notify" in stub.fail:
+                        return self.send_error(403)
+                    stub.notifications.append(data)
+                    return self.reply([])
+                if "itad" in stub.fail and path.startswith(("/lookup/", "/games/")):
+                    return self.send_error(403)
                 if path.startswith("/lookup/id/shop/"):
                     return self.reply({k: stub.gid_of.get(k) for k in data})
                 if path == "/games/prices/v3":
@@ -92,7 +105,7 @@ CONFIG_TEMPLATE = """\
 profile = {steamid}
 
 [itad]
-key = test-key
+key = {itad_key}
 country = US
 
 [rules]
@@ -100,14 +113,15 @@ country = US
 
 {targets_section}
 [home_assistant]
-url =
+url = {ha_url}
+service = notify.mobile_app_your_phone
 
 [output]
 deals_json = {data_dir}/deals.json
 """
 
 
-def write_config(work, rules="", ini_targets=None):
+def write_config(work, rules="", ini_targets=None, ha_url="", itad_key="test-key"):
     """Write config.ini under `work`; returns (config_path, data_dir)."""
     data_dir = os.path.join(work, "exports")
     os.makedirs(data_dir, exist_ok=True)
@@ -116,16 +130,17 @@ def write_config(work, rules="", ini_targets=None):
         targets = "[targets]\n" + "".join(f"{k} = {v}\n" for k, v in ini_targets.items())
     path = os.path.join(work, "config.ini")
     with open(path, "w", encoding="utf-8") as f:
-        f.write(CONFIG_TEMPLATE.format(steamid=fake_steamid(), rules=rules, targets_section=targets, data_dir=data_dir))
+        f.write(CONFIG_TEMPLATE.format(steamid=fake_steamid(), rules=rules, targets_section=targets, data_dir=data_dir,
+                                       ha_url=ha_url, itad_key=itad_key))
     return path, data_dir
 
 
-def run_watcher(stub, work, args, rules="", ini_targets=None, extra_env=None):
+def run_watcher(stub, work, args, rules="", ini_targets=None, extra_env=None, ha=False, itad_key="test-key"):
     """Run wishlist_deals.py (or the module in WD_MODULE) against the stub.
 
     Returns (returncode, stdout, stderr, snapshot_dict_or_None, data_dir). State lives under `work`.
     """
-    cfg, data_dir = write_config(work, rules, ini_targets)
+    cfg, data_dir = write_config(work, rules, ini_targets, ha_url=stub.url if ha else "", itad_key=itad_key)
     env = {k: v for k, v in os.environ.items() if not k.startswith("WD_")}
     env.update({
         "WD_STEAM_API": stub.url, "WD_ITAD_API": stub.url, "WD_STORE_API": stub.url, "WD_PROTONDB_API": stub.url,

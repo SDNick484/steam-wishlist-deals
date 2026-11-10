@@ -50,7 +50,7 @@ for t in $(echo "$CHECK_TIMES" | tr ',' ' '); do
 done
 
 say "Installing packages"
-apk add --no-cache python3 tzdata ca-certificates >/dev/null </dev/null
+apk add --no-cache python3 tzdata ca-certificates logrotate >/dev/null </dev/null
 
 if [ -n "$TZ_NAME" ]; then
   say "Setting time zone to $TZ_NAME"
@@ -65,6 +65,17 @@ mkdir -p "$PREFIX" "$HOME_DIR/.config/wishlist-deals" "$HOME_DIR/exports" "$HOME
 say "Installing to $PREFIX"
 install -m 0755 "$SRC/wishlist_deals.py" "$SRC/deals_server.py" "$PREFIX/"
 install -m 0644 "$SRC/deals.html" "$PREFIX/"
+# Stamp the build id into the INSTALLED server only (never the checkout): the short commit this checkout is at.
+# Without git, or outside a checkout, the placeholder stays and the server reports "unknown".
+BUILD_ID=$(git -c safe.directory="$SRC" -C "$SRC" rev-parse --short HEAD 2>/dev/null) || BUILD_ID=""
+case "$BUILD_ID" in
+  ""|*[!0-9a-f]*) ;;
+  *) if grep -q '^BUILD = "[$]Format' "$PREFIX/deals_server.py"; then
+       sed -i "s|^BUILD = .*|BUILD = \"$BUILD_ID\"|" "$PREFIX/deals_server.py"
+       chmod 0755 "$PREFIX/deals_server.py"
+       echo "Build $BUILD_ID"
+     fi;;
+esac
 
 CFG="$HOME_DIR/.config/wishlist-deals/config.ini"
 if [ ! -f "$CFG" ]; then
@@ -153,6 +164,21 @@ sed -i '/^# BEGIN steam-wishlist-deals$/,/^# END steam-wishlist-deals$/d' "$TAB"
 chmod 0600 "$TAB"
 rc-update add crond default >/dev/null 2>&1 || true
 rc-service crond restart >/dev/null 2>&1 || rc-service crond start
+
+say "Rotating this app's logs"
+# Only this app's own two logs; one file, rewritten on every run. copytruncate: the daemons keep their open files.
+mkdir -p /etc/logrotate.d
+cat > /etc/logrotate.d/steam-wishlist-deals <<EOF
+$HOME_DIR/logs/deals-server.log $HOME_DIR/logs/wishlist.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+chmod 0644 /etc/logrotate.d/steam-wishlist-deals
 
 say "Installing the deals page service (port $PORT)"
 NAV_ARG=""

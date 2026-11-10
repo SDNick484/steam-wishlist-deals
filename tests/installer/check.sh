@@ -8,6 +8,9 @@
 #
 #   docker run --rm -v "$PWD":/src:ro python:3.12-alpine sh /src/tests/installer/check.sh
 #
+# git is stubbed too: rev-parse prints a fixed short hash (or fails when STUB_GIT_FAIL=1), so the build stamp
+# can be checked on a machine with or without git, and the checkout is never touched.
+#
 # The installer finishes by running the watcher once as the app user (a dry run that calls the network)
 # when the config has no placeholders left. su is stubbed, so that never happens here, and the stubs
 # for wget and curl record every call so the test can assert nothing but the local health check ran.
@@ -19,6 +22,7 @@ if [ "${INSTALLER_TEST_OK:-}" != 1 ] && [ ! -f /.dockerenv ] && [ ! -f /etc/alpi
   exit 2
 fi
 
+DECOY=/etc/logrotate.d/zz-installer-check-other-app
 STUBS=$(mktemp -d)
 CALLS=$STUBS/calls.log
 : > "$CALLS"
@@ -28,6 +32,7 @@ fail=0
 # shellcheck disable=SC2317,SC2329  # runs from the EXIT trap (SC2317 on shellcheck < 0.10, SC2329 after)
 cleanup() {
   [ "$made_alpine_release" = 1 ] && rm -f /etc/alpine-release
+  rm -f "$DECOY"
   rm -rf "$STUBS"
 }
 trap cleanup EXIT
@@ -42,6 +47,15 @@ count() { grep -c "$1" "$2" || true; }
 
 # ---- stubs: record the call, do nothing. curl and su are here so that a network call, or the watcher's
 # dry run, cannot happen by accident; the test asserts they were never reached for anything but su's dry run.
+# git: `rev-parse --short HEAD` answers with a fixed hash, or fails when STUB_GIT_FAIL=1 (no checkout).
+cat > "$STUBS/git" <<EOF
+#!/bin/sh
+echo "git \$*" >> "$CALLS"
+[ "\${STUB_GIT_FAIL:-}" = 1 ] && exit 128
+case "\$*" in *rev-parse*--short*HEAD*) echo abc1234;; esac
+exit 0
+EOF
+chmod +x "$STUBS/git"
 for cmd in apk rc-service rc-update wget curl ip su; do
   cat > "$STUBS/$cmd" <<EOF
 #!/bin/sh
@@ -69,11 +83,17 @@ HOME_DIR=/home/steam
 TAB=/etc/crontabs/steam
 SAVED=/etc/steam-wishlist-deals.conf
 INIT=/etc/init.d/wishlist-deals
+LOGROTATE=/etc/logrotate.d/steam-wishlist-deals
+DECOY=/etc/logrotate.d/zz-installer-check-other-app
 CFG=$HOME_DIR/.config/wishlist-deals/config.ini
 # Start from a machine that has never had the installer (matters when this is re-run in the same VM).
-rm -f "$SAVED" "$INIT" "$CFG"
+rm -f "$SAVED" "$INIT" "$CFG" "$LOGROTATE"
 rm -rf "$PREFIX"
-mkdir -p /etc/crontabs /etc/init.d "$HOME_DIR"
+mkdir -p /etc/crontabs /etc/init.d /etc/logrotate.d "$HOME_DIR"
+# Another app's logrotate file, and every other file already in the directory, must come through untouched.
+printf '/var/log/other-app.log {\n    daily\n}\n' > "$DECOY"
+(cd /etc/logrotate.d && for f in *; do [ "$f" = steam-wishlist-deals ] || cksum "$f"; done) > "$STUBS/logrotate.before"
+cksum "$SRC/deals_server.py" > "$STUBS/server.before"
 
 # An unrelated job, and a block from an older install that must be replaced rather than duplicated.
 cat > "$TAB" <<'EOF'
@@ -111,11 +131,36 @@ check "the second check time is scheduled" grep -q '^45 18 \* \* \*  /usr/bin/py
 check "exactly one BEGIN" test "$(count '^# BEGIN steam-wishlist-deals$' "$TAB")" = 1
 check "exactly one END" test "$(count '^# END steam-wishlist-deals$' "$TAB")" = 1
 check "installed the files with the right modes" sh -c "[ \"\$(stat -c %a '$PREFIX/wishlist_deals.py')\" = 755 ] && [ \"\$(stat -c %a '$PREFIX/deals_server.py')\" = 755 ] && [ \"\$(stat -c %a '$PREFIX/deals.html')\" = 644 ]"
-check "installed every top-level file the server and watcher need" sh -c "cd '$SRC' && for f in wishlist_deals.py deals_server.py deals.html; do cmp -s \"\$f\" '$PREFIX'/\$f || exit 1; done"
+check "installed every top-level file the server and watcher need" sh -c "cd '$SRC' && for f in wishlist_deals.py deals.html; do cmp -s \"\$f\" '$PREFIX'/\$f || exit 1; done && grep -v '^BUILD = ' deals_server.py > '$STUBS/srv.a' && grep -v '^BUILD = ' '$PREFIX/deals_server.py' > '$STUBS/srv.b' && cmp -s '$STUBS/srv.a' '$STUBS/srv.b'"
 check "the installed server and watcher compile" sh -c "cd '$PREFIX' && python3 -m py_compile deals_server.py wishlist_deals.py"
 check "enabled and restarted the service" grep -q '^rc-service wishlist-deals restart' "$CALLS"
 check "enabled and restarted crond" sh -c "grep -q '^rc-update add crond' '$CALLS' && grep -q '^rc-service crond restart' '$CALLS'"
 check "ran the watcher's dry run as the app user, through the stub" grep -q '^su steam -c .*wishlist_deals.py --all --dry-run' "$CALLS"
+
+# ---- the build stamp: the installed server carries the short commit, the checkout is untouched
+check "stamps the short commit into the installed server" grep -qx 'BUILD = "abc1234"' "$PREFIX/deals_server.py"
+check "the stamped server reports that build" sh -c "cd '$PREFIX' && python3 -c 'import deals_server as d; assert d.build_id() == \"abc1234\", d.build_id()'"
+check "the checkout's server file is unchanged" sh -c "cksum '$SRC/deals_server.py' | cmp -s - '$STUBS/server.before'"
+check "the stamped server keeps its mode" test "$(stat -c %a "$PREFIX/deals_server.py")" = 755
+check "git was only asked for the short commit" sh -c "grep '^git ' '$CALLS' | grep -v 'rev-parse --short HEAD' | wc -l | grep -qx 0"
+
+# ---- log rotation: one file, only this app's own logs
+check "installs logrotate" grep -q 'apk add --no-cache .*logrotate' "$CALLS"
+check "writes the logrotate file" test -f "$LOGROTATE"
+cat > "$STUBS/logrotate.want" <<EOF
+$HOME_DIR/logs/deals-server.log $HOME_DIR/logs/wishlist.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+check "the logrotate file has exactly the expected content" cmp -s "$LOGROTATE" "$STUBS/logrotate.want"
+check "it names only this app's own two logs" sh -c "[ \"\$(grep -c '\.log' '$LOGROTATE')\" = 1 ] && grep -q '/deals-server.log' '$LOGROTATE' && grep -q '/wishlist.log' '$LOGROTATE' && ! grep -q '\*' '$LOGROTATE'"
+check "no other logrotate file was touched or added" sh -c "cd /etc/logrotate.d && for f in *; do [ \"\$f\" = steam-wishlist-deals ] || cksum \"\$f\"; done | cmp -s - '$STUBS/logrotate.before'"
+check "the cron lines write to a log the rotation covers" grep -q 'wishlist.log 2>&1$' "$TAB"
 
 cp "$TAB" "$STUBS/tab.first"
 
@@ -124,9 +169,13 @@ cp "$TAB" "$STUBS/tab.first"
 sed -i 's/^low_tolerance_pct = 0$/low_tolerance_pct = 7/' "$CFG"
 echo "# edited by the user" >> "$CFG"
 cp "$CFG" "$STUBS/cfg.before"
+echo "# edited by hand" >> "$LOGROTATE"      # a re-run must put its own file back
 run second
 
 check "keeps the config byte for byte" cmp -s "$CFG" "$STUBS/cfg.before"
+check "re-run: the logrotate file is rewritten identically" cmp -s "$LOGROTATE" "$STUBS/logrotate.want"
+check "re-run: no other logrotate file was touched or added" sh -c "cd /etc/logrotate.d && for f in *; do [ \"\$f\" = steam-wishlist-deals ] || cksum \"\$f\"; done | cmp -s - '$STUBS/logrotate.before'"
+check "re-run: the build stamp is still there" grep -qx 'BUILD = "abc1234"' "$PREFIX/deals_server.py"
 check "keeps the config mode 600" test "$(stat -c %a "$CFG")" = 600
 check "remembers PORT" grep -q -- "--port 8585 " "$INIT"
 check "remembers CHECK_TIMES" grep -q -- "--check-times 06:15,18:45" "$INIT"
@@ -150,12 +199,18 @@ check "the block holds one job" test "$(grep -c 'wishlist_deals.py' "$TAB")" = 1
 check "unrelated cron lines still there after the third run" sh -c "grep -qx '0 3 \* \* \* /usr/local/bin/other-job.sh' '$TAB' && grep -qx '30 6 \* \* \* /usr/local/bin/another-job.sh' '$TAB'"
 check "the config is still untouched" cmp -s "$CFG" "$STUBS/cfg.before"
 
+# ================================================================== re-run: no git
+run fourth STUB_GIT_FAIL=1
+check "without git the placeholder stays and the server reports unknown" sh -c "grep -q '^BUILD = \"[\$]Format' '$PREFIX/deals_server.py' && cd '$PREFIX' && python3 -c 'import deals_server as d; assert d.build_id() == \"unknown\", d.build_id()'"
+check "without git the installed server still compiles and keeps its mode" sh -c "python3 -m py_compile '$PREFIX/deals_server.py' && [ \"\$(stat -c %a '$PREFIX/deals_server.py')\" = 755 ]"
+check "the logrotate file is still in place" cmp -s "$LOGROTATE" "$STUBS/logrotate.want"
+
 # ================================================================== no network
 printf '\n--- network\n'
 check "wget was only used for the local health check" sh -c "! grep '^wget ' '$CALLS' | grep -qv '127.0.0.1'"
 check "wget did check the local health endpoint" grep -q '^wget .*http://127.0.0.1:8585/healthz' "$CALLS"
 check "curl was never called" sh -c "! grep -q '^curl ' '$CALLS'"
-check "the only apk call is the package install" sh -c "[ \"\$(grep -c '^apk ' '$CALLS')\" = 3 ] && ! grep '^apk ' '$CALLS' | grep -qv 'apk add --no-cache python3 tzdata ca-certificates'"
+check "the only apk call is the package install" sh -c "[ \"\$(grep -c '^apk ' '$CALLS')\" = 4 ] && ! grep '^apk ' '$CALLS' | grep -qv 'apk add --no-cache python3 tzdata ca-certificates logrotate'"
 
 # ================================================================== refusals
 printf '\n--- refusals\n'

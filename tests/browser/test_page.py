@@ -12,9 +12,11 @@ no network and a failed font request cannot count as a console error.
 """
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from tests.browser._support import (CUT_SCOPES, SCOPES, TARGET_GAME, TARGET_GAME_PRICE, DealsServer,
@@ -288,6 +290,119 @@ class NoDataTest(PageCase):
         (self.dir / "deals.json").unlink()
         page = self.open("/", "light", ready="#groups .empty")
         self.assertIn("appear here after the first check", page.inner_text("#headline"))
+
+
+class BannerTest(PageCase):
+    """The one banner for a failed last check or data older than 36 hours."""
+
+    FAILED_TAIL = "The last check failed ({}); see the watcher log on the server."
+
+    @staticmethod
+    def stamp(hours_ago=0.0, seconds_ago=0):
+        when = datetime.now(timezone.utc) - timedelta(hours=hours_ago, seconds=seconds_ago)
+        return when.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def status(self, last_ok, failures=0, cls=None, attempt=None):
+        doc = {"version": 1, "last_attempt": attempt or self.stamp(seconds_ago=30), "last_ok": last_ok,
+               "consecutive_failures": failures, "error_class": cls}
+        (self.dir / "run_status.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    def age_snapshot(self, hours_ago):
+        path = self.dir / "deals.json"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["generatedAt"] = self.stamp(hours_ago)
+        path.write_text(json.dumps(doc), encoding="utf-8")
+
+    def banner(self, page):
+        return page.is_visible("#runBanner"), page.inner_text("#runBannerText")
+
+    @staticmethod
+    def local(page, iso):
+        return page.evaluate("(iso) => new Date(iso).toLocaleString(undefined, "
+                             "{ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })", iso)
+
+    def test_hidden_when_everything_is_healthy(self):
+        def check(path, scheme):
+            self.serve()
+            self.status(self.stamp(seconds_ago=60))
+            page = self.open(path, scheme)
+            self.assertFalse(page.is_visible("#runBanner"))
+            self.assert_clean(page)
+        self.for_views(check)
+
+    def test_hidden_with_no_status_file_and_fresh_data(self):
+        def check(path, scheme):
+            self.serve()
+            page = self.open(path, scheme)
+            self.assertFalse(page.is_visible("#runBanner"))
+            self.assert_clean(page)
+        self.for_views(check)
+
+    def test_a_failed_last_check_shows_when_and_why(self):
+        def check(path, scheme):
+            self.serve()
+            ok = self.stamp(2)
+            self.status(ok, failures=2, cls="itad")
+            self.age_snapshot(2)
+            page = self.open(path, scheme)
+            shown, text = self.banner(page)
+            self.assertTrue(shown)
+            self.assertEqual(text, f"Deals data last refreshed {self.local(page, ok)}. " + self.FAILED_TAIL.format("itad"))
+            self.assertNotIn("/", text)
+            self.assert_clean(page)
+        self.for_views(check)
+
+    def test_a_failed_check_with_no_success_on_record_still_shows(self):
+        self.serve()
+        self.status(None, failures=1, cls="steam")
+        page = self.open("/", "light")
+        shown, text = self.banner(page)
+        self.assertTrue(shown)
+        self.assertTrue(text.endswith(self.FAILED_TAIL.format("steam")), text)
+        self.assertTrue(text.startswith("Deals data last refreshed "), text)   # the snapshot's own time
+
+    def test_old_data_shows_how_many_hours(self):
+        def check(path, scheme):
+            self.serve()
+            self.status(self.stamp(40.5))
+            self.age_snapshot(40.5)
+            page = self.open(path, scheme)
+            self.assertEqual(self.banner(page), (True, "Deals data was last refreshed 40 hours ago; see the watcher log on the server."))
+            self.assert_clean(page)
+        self.for_views(check)
+
+    def test_old_data_with_no_status_file(self):
+        self.serve()
+        self.age_snapshot(50.2)
+        page = self.open("/deals", "dark")
+        self.assertEqual(self.banner(page), (True, "Deals data was last refreshed 50 hours ago; see the watcher log on the server."))
+
+    def test_just_under_36_hours_is_not_stale(self):
+        self.serve()
+        self.status(self.stamp(35.5))
+        self.age_snapshot(35.5)
+        page = self.open("/", "light")
+        self.assertFalse(page.is_visible("#runBanner"))
+
+    def test_dismissing_hides_it_for_the_page_session(self):
+        self.serve()
+        self.status(self.stamp(2), failures=3, cls="notify")
+        page = self.open("/", "light")
+        self.assertTrue(page.is_visible("#runBanner"))
+        page.click("#runBannerClose")
+        self.assertFalse(page.is_visible("#runBanner"))
+        # the page reloads its data when the tab becomes visible again; the banner must stay away
+        page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        page.wait_for_timeout(300)
+        self.assertFalse(page.is_visible("#runBanner"))
+        self.assert_clean(page)
+
+    def test_the_status_route_answers_at_both_paths(self):
+        self.serve()
+        self.status(self.stamp(2), failures=1, cls="steam")
+        for path in PATHS:
+            page = self.open(path, "light")
+            self.assertEqual(page.evaluate("fetch('api/deals/status').then(r => r.json()).then(j => j.error_class)"), "steam")
 
 
 class FixtureSanityTest(unittest.TestCase):
