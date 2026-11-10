@@ -1,3 +1,65 @@
+# CLAUDE.md
+
+## What this is
+
+`steam-wishlist-deals`: a watcher that reads a Steam wishlist, finds deals through IsThereAnyDeal, sends
+notifications and writes `deals.json`, plus a small server and a single-page deals view with per-game target
+prices. Python standard library only; the page is one HTML file with no build step. Alpine with OpenRC and
+BusyBox crond is the primary target, systemd units are secondary.
+
+## Layout
+
+- `wishlist_deals.py`: the watcher. `evaluate()` decides what is an alert, `new_alerts()` what is new since the
+  last notification, `digest_text()`/`digest_html()` and `notify_ha()`/`notify_email()` send them,
+  `build_games()` and `write_snapshot()` write `deals.json` for the page, `load_state()`/`save_state()` keep
+  `state.json`. `load_targets()` reads `targets.json`
+- `deals_server.py`: serves the page and its JSON, saves target prices, re-runs the watcher quietly on
+  `POST /api/deals/refresh`. `App` holds the paths, `make_handler(app)` builds the request handler
+- `deals.html`: the whole page (HTML, CSS and JS in one file). It fetches relative `api/deals` and
+  `api/deals/targets`
+- `install/alpine.sh`: the installer. It keeps config and data, remembers its options in
+  `/etc/steam-wishlist-deals.conf` and replaces only its own `# BEGIN/END steam-wishlist-deals` crontab block
+- `contrib/systemd/`: service and timer units. `examples/config.example.ini`: every setting
+- `tests/`: unit tests (`test_evaluate`, `test_snapshot`, `test_targets_file`, `test_server`,
+  `test_e2e_unchanged`, `test_privacy_scan`) with local stand-ins for Steam, ITAD and ProtonDB
+  (`stub_services.py`, `helpers.py`) and golden files in `tests/fixtures/`.
+  `tests/browser/` is the page test (Playwright, test-only), `tests/installer/check.sh` the installer check
+- `.github/`: `workflows/ci.yml`, `dependabot.yml`, and `scripts/` (`lint.sh`, `systemd_verify.sh`,
+  `privacy_scan.py`)
+
+## Rules for changes
+
+- Standard library only in the product. The one non-stdlib thing in the repo is Playwright, pinned in
+  `tests/browser/requirements.txt` and used by tests only
+- One HTML file for the page. No build step, no bundler, no external script
+- **Every route is under `/api/deals/...` and has a `/deals/api/deals/...` twin**, because a path-routing
+  reverse proxy sends `/deals` and `/api/deals` to this server. Add both or neither. The page must work at
+  `/` and at `/deals` (no trailing slash)
+- **Notifications, the digest and `state.json` behavior are pinned by the golden tests**
+  (`tests/fixtures/`). A change there is a behavior change: say so in the PR, and update the golden file in
+  the same commit with the reason
+- **`targets.json` is edited only through `deals_server.py`** (atomic write, mode 0640). The watcher only
+  creates it, once, from legacy `[targets]` entries in `config.ini` when it is missing, and never replaces
+  an existing one
+- A new top-level file that has to ship (a `.py`, `.html` or `.sh` the app needs at run time) is added to
+  `install/alpine.sh`, and the PR calls it out
+- Installers stay safe to re-run. Behavior or option changes update the README in the same PR
+
+## Commands
+
+```sh
+python3 -m unittest -v                                   # unit tests, no skips allowed
+pip install -r tests/browser/requirements.txt && playwright install chromium
+REQUIRE_BROWSER=1 python3 -m unittest -v tests.browser.test_page      # the page in Chromium
+docker run --rm -v "$PWD":/src:ro python:3.12-alpine sh /src/tests/installer/check.sh
+sh .github/scripts/lint.sh                               # shellcheck, py_compile, systemd-analyze verify
+python3 .github/scripts/privacy_scan.py                  # files and history
+```
+
+Set `BROWSER_EXECUTABLE` to use an installed Chrome or Chromium instead of Playwright's download.
+`tests/installer/check.sh` changes `/etc`, `/opt` and `/home`: run it in a container, or in a throwaway
+machine with `INSTALLER_TEST_OK=1 FAKE_USERS=1`.
+
 STANDING RULES
 - Read the current code on main before changing anything. If it contradicts a decision above, stop and
   tell me rather than improvising.
@@ -15,10 +77,10 @@ STANDING RULES
   block. Update the README in the same PR when behavior or options change.
 
 SHIP PROCEDURE
-1. Work on the feature branch named above. Small, focused commits, each with its tests.
-2. Before pushing, run everything CI runs, locally, with nothing skipped (REQUIRE_NODE=1,
-   REQUIRE_OPENSSL=1, REQUIRE_BROWSER=1 where the repo uses them; the installer check in a
-   python:3.12-alpine container if an installer changed; the privacy scan if the repo has one).
+1. Work on a feature branch. Small, focused commits, each with its tests.
+2. Before pushing, run everything CI runs, locally, with nothing skipped (REQUIRE_BROWSER=1 for the page
+   test; the installer check in a python:3.12-alpine container if an installer changed; lint; the privacy
+   scan).
 3. git push -u origin <branch>, then gh pr create. PR body: what changed, the exact commands you ran with
    pass counts, and anything I must do by hand. No deploy commands and no server details in the PR.
 4. gh pr checks <number> --watch --interval 30. If a check fails: gh run view <run-id> --log-failed, fix
@@ -27,14 +89,8 @@ SHIP PROCEDURE
    tell me what is failing and why.
 5. When every check is green, notify me: use your push-notification tool if you have one; otherwise, if
    STEAM_NOTIFY_CMD is set, run it with one argument, "<repo>#<number> CI green: <title>". Do not merge.
-6. Finish with one message, in chat only: the PR URL, the check summary, and a DEPLOY VERDICT. I deploy
-   from a dashboard that archives only a fixed list of top-level files per app (no installer run), and
-   refuses when the diff touches install/, deploy/ or dependencies. So say which applies, from the diff:
+6. Finish with one message, in chat only: the PR URL, the check summary, and a DEPLOY VERDICT, from the diff:
      A  Dashboard deploy is enough: only already-shipped files changed.
      B  Installer by hand: name the paths that changed under install/ or deploy/, or the dependency.
      C  Registry first: list every NEW file that must ship (any top-level .py, .html or .sh the app needs
         at run time), then A or B.
-   Then the checks to run after deploying (complete commands, saying where each runs: my laptop via
-   ssh root@pve "pct exec 210 -- sh -c '...'" or a shell inside the CT; vim for edits), any file I must
-   edit on the server, and whether a tunnel or Access change is needed. Before anything destructive on
-   the server, have me take a pct snapshot first.

@@ -38,6 +38,7 @@ The project uses only Python's standard library, and the page is a single HTML f
 | `examples/config.example.ini` | Every setting, documented |
 | `install/alpine.sh` | Installer for Alpine Linux (OpenRC); works well in a small Proxmox LXC |
 | `contrib/systemd/` | Service and timer units for systemd hosts |
+| `tests/`, `.github/` | Tests and CI (see [Tests and CI](#tests-and-ci)) |
 
 ## What you need
 
@@ -119,13 +120,47 @@ The server's API, also reachable under `/deals/api/deals/...` for setups that on
 
 Writes need `Content-Type: application/json` and a body of at most 1 KB. The price must be above 0 and at most 1000 (rounded to cents), and there's a limit of 5,000 targets. Anything else gets a 400 with a short error.
 
-## Tests
+## Tests and CI
+
+The product needs only the Python standard library. The tests use `unittest`, and CI adds test-only tools (Playwright, shellcheck) that are never installed on a server.
 
 ```sh
-python3 -m unittest
+# Evaluation, notifications and digest (pinned by golden files), the snapshot, targets.json, the server, the privacy scanner
+python3 -m unittest -v
+
+# The page in a real browser (pip install -r tests/browser/requirements.txt && playwright install chromium)
+python3 -m unittest -v tests.browser.test_page
+
+# The Alpine installer, stubbed (changes /etc and /opt: run it in a container)
+docker run --rm -v "$PWD":/src:ro python:3.12-alpine sh /src/tests/installer/check.sh
+
+# shellcheck, py_compile, systemd-analyze verify
+sh .github/scripts/lint.sh
 ```
 
-Standard library only. The tests run the watcher against local stand-ins for Steam, ITAD and ProtonDB, and check that alerts and the digest haven't changed.
+What each part checks:
+
+- **Unit tests** run the watcher against local stand-ins for Steam, ITAD and ProtonDB and check that alerts, the digest and `state.json` haven't changed, that `deals.json` has the shape the page expects, how `targets.json` is read and written, and every route of the server. They also include the privacy scanner's own tests.
+- **Page test** starts `deals_server.py` over a generated 60-game `deals.json` and a `targets.json`, then opens `deals.html` in Chromium at 390x844, in light and dark, at `/` and at `/deals` (no trailing slash). It checks that each scope's number matches the rows listed, the minimum % filter and its "bundle-only deals hidden" line, that a target can be set, edited and cleared with the target view updating without a reload and the value surviving one, that an older `deals.json` without `games` shows the fallback message, that there are no console errors, and that the page never scrolls sideways.
+- **Installer test** runs `install/alpine.sh` in `python:3.12-alpine` twice (and a third time with one option changed): the config and the saved options are kept, there is exactly one `BEGIN`/`END` cron block, unrelated cron lines survive, and nothing but the local health check touches the network.
+- **Lint** runs shellcheck on every shell script, `py_compile` on every Python file and `systemd-analyze verify` on `contrib/systemd`.
+
+CI runs on pushes to `main`, pull requests, weekly, and on demand. The unit tests run on Python 3.11 to 3.14 and fail if any test is skipped; the other jobs use one version. Every third-party action is pinned to a full commit SHA with its version in a comment, and Dependabot updates them (and the test-only Playwright pin) weekly.
+
+### Privacy scan
+
+This repository is public, so a CI job (`.github/scripts/privacy_scan.py`) fails if a tracked file or a commit contains a SteamID, an IPv4 address that isn't loopback, documentation (RFC 5737) or private (RFC 1918), an email that isn't a `noreply` or `example` address, or any term from a private denylist. CI logs are public too, so the scanner prints only the file, line and rule, never the matched text. Files under `tests/fixtures/` may contain IP addresses, but never SteamIDs.
+
+The denylist holds things no pattern can know (your hostnames, domain, name, time zone, device names). It lives in a repository secret, so it is never committed. To add it:
+
+1. On GitHub, open this repository and choose **Settings**.
+2. In the left sidebar, choose **Secrets and variables**, then **Actions**.
+3. Under **Repository secrets**, choose **New repository secret**.
+4. Name it exactly `PRIVACY_DENYLIST`.
+5. In **Secret**, enter one term per line. Matching ignores case and looks at file contents, file names and commit messages. Lines starting with `#` are ignored.
+6. Choose **Add secret**.
+
+Until it exists, the job runs the pattern checks only and shows a warning. Pull requests from forks, and Dependabot's, can't read the secret and get the same warning. To check locally: `PRIVACY_DENYLIST="$(cat my-terms.txt)" python3 .github/scripts/privacy_scan.py`. A line can opt out with the text `privacy-scan: allow` (say why beside it).
 
 ## Security
 

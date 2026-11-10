@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Keeps the SHA-pinned actions in .github/workflows/ current. Dependabot rewrites the full SHA and the
+  # `# vX.Y.Z` comment together. (It cannot read Actions secrets, so the privacy scan's denylist check is
+  # skipped on its pull requests; the pattern checks still run.)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The test-only Playwright pin in tests/browser/requirements.txt. The product itself has no dependencies.
+  - package-ecosystem: pip
+    directory: /tests/browser
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    groups:
+      browser-tests:
+        patterns: ["*"]
