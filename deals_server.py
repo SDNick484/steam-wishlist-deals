@@ -35,6 +35,7 @@ import subprocess
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 SKELETON_HEAD = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -47,9 +48,33 @@ SKELETON_HEAD = (
 SKELETON_TAIL = "</body></html>"
 
 TARGETS_RE = re.compile(r"^(?:/deals)?/api/deals/targets(?:/([^/]*))?$")
+# Sent with every response. No script-src: the page's own inline script has to run.
+SECURITY_HEADERS = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "same-origin"),
+    ("Content-Security-Policy", "frame-ancestors 'none'"),
+)
 MAX_BODY = 1024          # bytes; a target is one small JSON object
 MAX_TARGETS = 5000
 MAX_PRICE = 1000.0
+
+
+def cross_site_request(headers) -> bool:
+    """True when a browser says this request comes from another site.
+
+    Origin present and its host[:port] is not the request's Host, or Sec-Fetch-Site is "cross-site".
+    Origin "null" counts as cross-site. Requests with neither header (curl, cron) are not cross-site.
+    """
+    origin = (headers.get("Origin") or "").strip().lower()
+    if origin:
+        host = (headers.get("Host") or "").strip().lower()
+        try:
+            origin_host = urlsplit(origin).netloc
+        except ValueError:
+            return True
+        if not origin_host or origin_host != host:
+            return True
+    return (headers.get("Sec-Fetch-Site") or "").strip().lower() == "cross-site"
 
 
 class BadRequest(Exception):
@@ -189,6 +214,19 @@ def make_handler(app: App):
         def log_message(self, fmt, *args):
             sys.stderr.write("%s %s\n" % (self.address_string(), fmt % args))
 
+        def end_headers(self) -> None:
+            # Every response carries these, including errors the http.server module sends itself.
+            for name, value in SECURITY_HEADERS:
+                self.send_header(name, value)
+            super().end_headers()
+
+        def refuse_cross_site(self) -> bool:
+            """Send 403 and return True for a cross-site request. Called first in every mutating method."""
+            if cross_site_request(self.headers):
+                self.json(403, {"error": "cross-site request refused"})
+                return True
+            return False
+
         def send(self, status: int, body: bytes = b"", ctype: str = "application/json") -> None:
             self.send_response(status)
             self.send_header("Content-Type", ctype)
@@ -254,6 +292,8 @@ def make_handler(app: App):
             return self.rfile.read(n)
 
         def do_PUT(self):
+            if self.refuse_cross_site():
+                return
             text = self.target_route()
             if text is None:
                 return self.json(404, {"error": "not found"})
@@ -264,12 +304,16 @@ def make_handler(app: App):
             return self.targets_call(go)
 
         def do_DELETE(self):
+            if self.refuse_cross_site():
+                return
             text = self.target_route()
             if text is None:
                 return self.json(404, {"error": "not found"})
             return self.targets_call(lambda: app.clear_target(parse_appid(text)))
 
         def do_POST(self):
+            if self.refuse_cross_site():
+                return
             if self.path.split("?", 1)[0] in ("/api/deals/refresh", "/deals/api/deals/refresh"):
                 status, obj = app.refresh_deals()
                 return self.json(status, obj)
