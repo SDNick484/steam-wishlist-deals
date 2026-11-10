@@ -67,8 +67,8 @@ class StatusFile(WatcherCase):
         doc = self.status()
         self.assertEqual((doc["consecutive_failures"], doc["error_class"]), (0, None))
 
-    def test_dry_runs_and_the_quiet_refresh_write_nothing(self):
-        for args in (["--dry-run"], ["--all", "--dry-run"], ["--snapshot-only"]):
+    def test_dry_runs_write_nothing(self):
+        for args in (["--dry-run"], ["--all", "--dry-run"], ["--snapshot-only", "--dry-run"]):
             with self.subTest(args=args):
                 code, _, err, _, _ = self.run_watcher(args)
                 self.assertEqual(code, 0, err)
@@ -185,6 +185,73 @@ class Counting(WatcherCase):
             f.write("{ nope")
         self.run_watcher()
         self.assertEqual(self.status()["consecutive_failures"], 0)
+
+
+class QuietRuns(WatcherCase):
+    """--snapshot-only (the page's Check now) is recorded like any run, but never sends a notice."""
+
+    QUIET = ["--snapshot-only"]
+
+    def test_a_quiet_success_is_recorded_and_clears_failures(self):
+        self.stub.fail = {"steam"}
+        self.run_watcher()
+        self.stub.fail = set()
+        code, _, err, _, _ = self.run_watcher(self.QUIET)
+        self.assertEqual(code, 0, err)
+        doc = self.status()
+        self.assertEqual((doc["consecutive_failures"], doc["error_class"]), (0, None))
+        self.assertRegex(doc["last_ok"], STAMP)
+        self.assertEqual(doc["last_ok"], doc["last_attempt"])
+
+    def test_a_quiet_success_from_nothing_writes_the_file(self):
+        self.run_watcher(self.QUIET)
+        doc = self.status()
+        self.assertEqual(set(doc), KEYS)
+        self.assertEqual(doc["consecutive_failures"], 0)
+
+    def test_a_quiet_failure_counts_and_keeps_last_ok(self):
+        self.run_watcher()
+        ok = self.status()["last_ok"]
+        self.stub.fail = {"itad"}
+        code, *_ = self.run_watcher(self.QUIET)
+        self.assertNotEqual(code, 0)
+        doc = self.status()
+        self.assertEqual((doc["consecutive_failures"], doc["error_class"], doc["last_ok"]), (1, "itad", ok))
+
+    def test_quiet_runs_send_no_notice_even_when_crossing_3(self):
+        self.run_watcher(ha=True)
+        before = len(self.stub.notifications)
+        self.stub.fail = {"steam"}
+        for _ in range(4):
+            self.run_watcher(self.QUIET, ha=True)
+        self.assertEqual(self.status()["consecutive_failures"], 4)
+        self.stub.fail = set()
+        self.run_watcher(self.QUIET, ha=True)
+        self.assertEqual(self.status()["consecutive_failures"], 0)
+        self.assertEqual(len(self.stub.notifications), before)
+
+    def test_a_full_failure_after_a_quiet_crossing_sends_no_notice(self):
+        self.stub.fail = {"steam"}
+        for _ in range(3):
+            self.run_watcher(self.QUIET, ha=True)
+        self.run_watcher(ha=True)
+        self.assertEqual(self.status()["consecutive_failures"], 4)
+        self.assertEqual(self.messages(), [])
+
+    def test_a_full_run_still_notifies_when_quiet_runs_got_it_partway(self):
+        self.stub.fail = {"steam"}
+        self.run_watcher(self.QUIET, ha=True)
+        self.run_watcher(self.QUIET, ha=True)
+        self.run_watcher(ha=True)                      # 2 -> 3: the notice goes out
+        self.assertEqual(self.messages(), [FAILING.format("steam")])
+
+    def test_a_full_success_after_a_notified_streak_still_sends_recovery(self):
+        self.stub.fail = {"steam"}
+        for _ in range(3):
+            self.run_watcher(ha=True)
+        self.stub.fail = set()
+        self.run_watcher(ha=True)
+        self.assertEqual(self.messages().count(RECOVERED), 1)
 
 
 class Notices(WatcherCase):

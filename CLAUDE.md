@@ -16,7 +16,7 @@ BusyBox crond is the primary target, systemd units are secondary.
 - `deals_server.py`: serves the page and its JSON, saves target prices, re-runs the watcher quietly on
   `POST /api/deals/refresh`. `App` holds the paths, `make_handler(app)` builds the request handler
 - `run_status.json` (data dir, next to `deals.json`): written by the watcher after every real run (not
-  `--dry-run`, not `--snapshot-only`); `Stage`, `record_run()`, `next_run_status()` and `send_notice()` are in
+  `--dry-run`; `--snapshot-only` is recorded too, without notices); `Stage`, `record_run()`, `next_run_status()` and `send_notice()` are in
   `wishlist_deals.py`. The server reads it for `GET /api/deals/status` and `GET /healthz?deep=1`
 - `deals.html`: the whole page (HTML, CSS and JS in one file). It fetches relative `api/deals` and
   `api/deals/targets`
@@ -52,8 +52,8 @@ BusyBox crond is the primary target, systemd units are secondary.
   inherits both; don't bypass them. No `script-src` policy: the page's script is inline
 - **`run_status.json` has a fixed shape** (`version`, `last_attempt`, `last_ok`, `consecutive_failures`,
   `error_class`) shared with steam-backlog-triage. `error_class` is one of steam, itad, notify, config, other
-  and never error text. The failure notice is sent when the counter reaches exactly 3, the recovery notice
-  when a run succeeds after a streak of 3 or more
+  and never error text. The failure notice is sent when a full run takes the counter to 3 or more from below 3, the recovery
+  notice when a full run succeeds after a streak of 3 or more; quiet runs never notify
 - `BUILD` in `deals_server.py` is an `export-subst` placeholder (`.gitattributes`); the installer stamps the
   installed copy only. Never commit a real hash into it
 - Installers stay safe to re-run. Behavior or option changes update the README in the same PR

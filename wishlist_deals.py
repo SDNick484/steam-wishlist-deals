@@ -842,8 +842,8 @@ class Stage:
         return self.name if self.name in ERROR_CLASSES else "other"
 
     def recording(self, args) -> bool:
-        """Dry runs and the page's quiet refresh (--snapshot-only) don't touch run_status.json."""
-        return self.have_config and not (args.dry_run or args.snapshot_only)
+        """Dry runs don't touch run_status.json. The page's quiet refresh (--snapshot-only) does, without notices."""
+        return self.have_config and not args.dry_run
 
 
 def utc_stamp(when: datetime | None = None) -> str:
@@ -941,11 +941,12 @@ def send_notice(cfg, text: str) -> int:
     return delivered
 
 
-def record_run(cfg, error_class: str | None) -> None:
-    """Write run_status.json after a real run, and send the failure / recovery notice when it is due.
+def record_run(cfg, error_class: str | None, quiet: bool = False) -> None:
+    """Write run_status.json after a run that isn't a dry run, and send the failure / recovery notice when due.
 
-    One notice when the failure counter reaches FAIL_NOTICE_AFTER (not on every later failure), and one when a
-    run succeeds after a streak that long. The alert rules, the digest and state.json are not involved.
+    A full run sends one notice when the failure counter reaches FAIL_NOTICE_AFTER or more while the previous
+    file was below it, and one when it succeeds after a streak that long. A quiet run (--snapshot-only) is
+    recorded the same way but never notifies. The alert rules, the digest and state.json are not involved.
     """
     path = run_status_path(cfg)
     prev = read_run_status(path)
@@ -957,9 +958,10 @@ def record_run(cfg, error_class: str | None) -> None:
         return
     if error_class is not None:
         log(f"Run failed ({doc['error_class']}); {doc['consecutive_failures']} in a row.")
-        if doc["consecutive_failures"] == FAIL_NOTICE_AFTER:
+        before = (prev or {}).get("consecutive_failures", 0)
+        if not quiet and doc["consecutive_failures"] >= FAIL_NOTICE_AFTER and before < FAIL_NOTICE_AFTER:
             send_notice(cfg, FAIL_NOTICE.format(doc["error_class"]))
-    elif prev and prev["consecutive_failures"] >= FAIL_NOTICE_AFTER:
+    elif not quiet and prev and prev["consecutive_failures"] >= FAIL_NOTICE_AFTER:
         send_notice(cfg, RECOVERED_NOTICE)
 
 
@@ -993,10 +995,10 @@ def main() -> None:
             error = None
         else:
             if stage.recording(args):
-                record_run(cfg, stage.error_class())
+                record_run(cfg, stage.error_class(), quiet=args.snapshot_only)
             raise
     if stage.recording(args):
-        record_run(cfg, error)
+        record_run(cfg, error, quiet=args.snapshot_only)
 
 
 def run(args, cfg, stage: "Stage") -> str | None:

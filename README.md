@@ -92,7 +92,7 @@ The installer runs `apk add logrotate` and writes one file, `/etc/logrotate.d/st
 
 ## Failed and stale runs
 
-After every real run (not `--dry-run`, and not the page's quiet **Check now**) the watcher writes `run_status.json` next to `deals.json`, atomically and with mode 0640:
+After every run except `--dry-run` (the page's quiet **Check now** included) the watcher writes `run_status.json` next to `deals.json`, atomically and with mode 0640:
 
 ```json
 {"version": 1, "last_attempt": "2026-11-10T19:40:03Z", "last_ok": "2026-11-10T19:40:03Z",
@@ -105,7 +105,7 @@ After every real run (not `--dry-run`, and not the page's quiet **Check now**) t
 
 **The deals page** shows one dismissible banner when the last run failed ("Deals data last refreshed … The last check failed (itad); see the watcher log on the server.") or when the data is over 36 hours old ("Deals data was last refreshed 40 hours ago; …"). Dismissing it lasts for that page session. Without a `run_status.json` (an older watcher, or before the first run) the page judges staleness from the time in `deals.json` and never shows the failure text.
 
-**A failure notice** goes out through your configured channels (Home Assistant and/or email) when the failure counter reaches 3: "Wishlist checks are failing: itad". It is sent once, not on every later failure. When a run succeeds after such a streak you get one more: "Wishlist checks are working again". If sending the notice fails, it is logged and the run carries on. The alert rules, the digest and `state.json` behave exactly as before.
+**A failure notice** goes out through your configured channels (Home Assistant and/or email) when a scheduled run takes the failure counter to 3 or more and the run before it was below 3: "Wishlist checks are failing: itad". It is sent once, not on every later failure. When a run succeeds after such a streak you get one more: "Wishlist checks are working again". **Check now** is recorded too (a success clears the banner, a failure counts) but never notifies, so if it is the run that crosses 3, no failure notice is sent for that streak. If sending the notice fails, it is logged and the run carries on. The alert rules, the digest and `state.json` behave exactly as before.
 
 **Routes** (each also answers under `/deals/...`):
 - `GET /api/deals/status` returns the file's content, or `{"version":1,"last_attempt":null,"last_ok":null,"consecutive_failures":0,"error_class":null}` when there is none.
