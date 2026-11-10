@@ -72,6 +72,9 @@ input[type=search],select{background:var(--surface);border:1px solid var(--line-
 .check input{width:16px;height:16px;accent-color:var(--accent)}
 
 .notice{background:var(--warn-soft);color:var(--warn-ink);border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:500}
+.runbanner{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.runbanner span{flex:1;min-width:0}
+.runbanner .mini{flex:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 select:disabled{opacity:.55;cursor:not-allowed}
 #groups{display:flex;flex-direction:column;gap:22px}
@@ -146,6 +149,11 @@ footer{font-size:12.5px;color:var(--muted);max-width:90ch}
       Check now
     </button>
   </header>
+
+  <div class="notice runbanner" id="runBanner" role="status" hidden>
+    <span id="runBannerText"></span>
+    <button type="button" class="mini" id="runBannerClose" aria-label="Dismiss this notice">Dismiss</button>
+  </div>
 
   <div class="kinds" id="kinds" role="radiogroup" aria-label="Show"></div>
 
@@ -226,6 +234,8 @@ const LEGACY_KINDS = [
 ];
 const F = { scope: "sale", q: "", shop: "", tag: "", deck: "", sort: "rank", newOnly: false, minRating: 0, minCut: 0 };
 let SNAP = null;
+let RUN = null;            // the watcher's last run (api/deals/status), or null when it couldn't be loaded
+let BANNER_DISMISSED = ""; // which banner was dismissed ("failed" or "stale"); kept for this page session only
 let TARGETS = {}, TARGETS_OK = false;   // {appid: price} from the server; TARGETS_OK false = couldn't load them
 let INFLIGHT = 0;                       // target saves still on their way to the server
 let EDIT = null;                        // {appid, value, error} while a target is being typed
@@ -633,11 +643,47 @@ async function loadTargets() {
   } catch (e) { TARGETS_OK = false; }
 }
 
+// One dismissible banner when the last check failed or the data is over 36 hours old.
+const STALE_MS = 36 * 3600 * 1000;
+function runBanner() {
+  const ms = (iso) => { const t = Date.parse(iso || ""); return Number.isFinite(t) ? t : null; };
+  const seen = [RUN && ms(RUN.last_ok), SNAP && ms(SNAP.generatedAt)].filter((t) => t != null);
+  const fresh = seen.length ? Math.max(...seen) : null;   // when the data on the page was last refreshed
+  if (RUN && Number.isInteger(RUN.consecutive_failures) && RUN.consecutive_failures > 0) {
+    const stamp = fresh == null ? "" : new Date(fresh).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    return { kind: "failed", html: (fresh == null ? "Deals data has never been refreshed." : `Deals data last refreshed ${esc(stamp)}.`) +
+      ` The last check failed (${esc(RUN.error_class || "other")}); see the watcher log on the server.` };
+  }
+  if (fresh != null && Date.now() - fresh > STALE_MS) {
+    const hours = Math.floor((Date.now() - fresh) / 3600000);
+    return { kind: "stale", html: `Deals data was last refreshed ${esc(hours)} hours ago; see the watcher log on the server.` };
+  }
+  return null;
+}
+function renderBanner() {
+  const b = runBanner(), el = $("runBanner");
+  if (b) $("runBannerText").innerHTML = b.html;
+  el.hidden = !b || b.kind === BANNER_DISMISSED;
+}
+$("runBannerClose").addEventListener("click", () => {
+  const b = runBanner(); BANNER_DISMISSED = b ? b.kind : ""; renderBanner();
+});
+
+async function loadRunStatus() {
+  try {
+    const r = await fetch("api/deals/status", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    RUN = j && typeof j === "object" ? j : null;
+  } catch (e) { RUN = null; }
+}
+
 async function load() {
   const snap = fetch("api/deals", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const [s] = await Promise.all([snap, loadTargets()]);
+  const [s] = await Promise.all([snap, loadTargets(), loadRunStatus()]);
   SNAP = s;
+  renderBanner();
   NEWLOW.clear();
   if (SNAP) (SNAP.deals || []).forEach((d) => { if (d.newLow) NEWLOW.add(d.appid); });
   render();
