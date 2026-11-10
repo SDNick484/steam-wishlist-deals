@@ -1,0 +1,2 @@
+# Test-only. The product itself is standard library only.
+playwright==1.49.1
