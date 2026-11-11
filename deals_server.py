@@ -10,6 +10,10 @@ Standard library only. Serves:
   PUT    /api/deals/targets/APPID    set one: body {"price": 12.5}
   DELETE /api/deals/targets/APPID    clear one
   GET  /api/deals/status    the last watcher run (run_status.json in the data directory)
+  GET  /ask                 the same page, showing Ask (also /deals/ask; a trailing slash 308s to the bare path)
+  GET  /api/deals/ask/status  {"ask": true, "turns": 5} when this request may use Ask, else {"ask": false}
+  POST /api/deals/ask       {"thread": [{"q": "..."}, ...]}: a plain-language question about the wishlist,
+                            answered by Claude over read-only tools (Ask: see ask.py; off until ask.env has a key)
   GET  /healthz             "ok"
   GET  /healthz?deep=1      JSON: 200 when the last check succeeded and is under 36 hours old, else 503
 Every /api/deals/... route also answers under /deals/api/deals/..., so one path rule on a shared
@@ -22,7 +26,7 @@ watcher's config (~/.config/wishlist-deals/config.ini).
 
 Usage:
   deals_server.py [--port 8485] [--bind 0.0.0.0] [--data DIR] [--check-times 10:40,19:40]
-                  [--nav "Backlog=https://backlog.example.com/"] ...
+                  [--nav "Backlog=https://backlog.example.com/"] ... [--ask-env PATH]
 """
 
 from __future__ import annotations
@@ -39,6 +43,10 @@ import threading
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
+
+import ask
+import deals_query as dq
+from access_jwt import Verifier
 
 SKELETON_HEAD = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -61,6 +69,8 @@ ERROR_CLASSES = ("steam", "itad", "notify", "config", "other")
 NO_RUN_STATUS = {"version": 1, "last_attempt": None, "last_ok": None, "consecutive_failures": 0, "error_class": None}
 STATUS_RE = re.compile(r"^(?:/deals)?/api/deals/status$")
 HEALTHZ_RE = re.compile(r"^(?:/deals)?/healthz$")
+ASK_PAGE_RE = re.compile(r"^(?:/deals)?/ask/?$")
+ASK_API_RE = re.compile(r"^(?:/deals)?/api/deals/ask(/status)?$")
 
 # Sent with every response. No script-src: the page's own inline script has to run.
 SECURITY_HEADERS = (
@@ -157,6 +167,26 @@ class App:
         self.targets_file = os.path.join(data_dir, "targets.json")
         self.status_file = os.path.join(data_dir, RUN_STATUS_FILE)
         self.targets_lock = threading.Lock()  # one read-modify-write at a time
+        # main() replaces this with one built from ask.env; until then Ask is off.
+        self.ask = ask.Ask(None, data_dir, self.ask_snapshot, cross_site=cross_site_request)
+
+    # ---- what Ask's tools see: deals.json, targets.json and run_status.json, never config.ini or state.json.
+
+    def ask_snapshot(self) -> dq.Snapshot | None:
+        """The wishlist as Ask's tools see it, parsed fresh per question; None when there is no usable list."""
+        try:
+            with open(self.deals, encoding="utf-8") as f:
+                doc = json.load(f)
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError):
+            sys.stderr.write("Ask: deals.json is not JSON\n")
+            return None
+        try:
+            targets = {int(k): v for k, v in self.get_targets().get("targets", {}).items()}
+        except (TargetsUnreadable, ValueError):
+            targets = None
+        return dq.build_snapshot(doc, targets, self.run_status())
 
     # ---- target prices. The watcher reads targets.json; this server is the only thing that edits it.
 
@@ -313,6 +343,22 @@ def make_handler(app: App):
 
         def do_GET(self):
             path = self.path.split("?", 1)[0]
+            if ASK_PAGE_RE.match(path):
+                if path.endswith("/"):  # a relative api/deals/ask from here would miss; go to the bare path
+                    query = self.path.partition("?")[2]
+                    self.send_response(308)
+                    self.send_header("Location", path[:-1] + ("?" + query if query else ""))
+                    self.send_header("Content-Length", "0")
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    return
+                try:
+                    return self.send(200, app.page_bytes(), "text/html; charset=utf-8")
+                except OSError:
+                    return self.json(500, {"error": "deals page missing"})
+            m = ASK_API_RE.match(path)
+            if m and m.group(1):
+                return self.json(200, app.ask.status(self.headers, self.client_address[0]))
             if path in ("/", "/index.html", "/deals", "/deals/"):
                 try:
                     return self.send(200, app.page_bytes(), "text/html; charset=utf-8")
@@ -388,12 +434,50 @@ def make_handler(app: App):
                 return self.json(404, {"error": "not found"})
             return self.targets_call(lambda: app.clear_target(parse_appid(text)))
 
+        def drain_body(self) -> None:
+            """Read and discard a small request body so an early answer isn't met with a reset. Only a body of
+            1..ask.POST_MAX bytes is read; an over-limit or unparseable length never is."""
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return
+            if 0 < n <= ask.POST_MAX:
+                self.rfile.read(n)
+
+        def ask_post(self) -> None:
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = -1
+            if n < 0 or n > ask.POST_MAX:
+                return self.json(400, {"error": ask.INVALID})
+            raw = self.rfile.read(n) if n else b""
+            status, body, extra = app.ask.handle(self.headers, self.client_address[0],
+                                                 self.headers.get("Content-Type") or "", raw)
+            self.send_json_with(status, body, extra)
+
+        def send_json_with(self, status: int, obj, extra: dict) -> None:
+            data = json.dumps(obj).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            for name, value in extra.items():
+                self.send_header(name, value)
+            self.end_headers()
+            self.wfile.write(data)
+
         def do_POST(self):
             if self.refuse_cross_site():
                 return
+            m = ASK_API_RE.match(self.path.split("?", 1)[0])
+            if m and not m.group(1):
+                return self.ask_post()
             if self.path.split("?", 1)[0] in ("/api/deals/refresh", "/deals/api/deals/refresh"):
+                self.drain_body()
                 status, obj = app.refresh_deals()
                 return self.json(status, obj)
+            self.drain_body()
             self.json(404, {"error": "not found"})
 
     return Handler
@@ -430,9 +514,17 @@ def main() -> None:
                     help="Scheduled check times shown on the page, e.g. 10:40,19:40 (local time)")
     ap.add_argument("--nav", action="append", default=[], metavar="LABEL=URL",
                     help="Add a link to the page header, e.g. --nav 'Backlog=https://backlog.example.com/'")
+    ap.add_argument("--ask-env", metavar="PATH", default=os.path.expanduser("~/.config/wishlist-deals/ask.env"),
+                    help="Ask settings: the Anthropic key and who may ask (default: %(default)s)")
     args = ap.parse_args()
     os.makedirs(args.data, exist_ok=True)
     app = App(args.page, args.data, args.watcher, parse_nav(args.nav), parse_times(args.check_times))
+    settings, ask_line = ask.load_settings(args.ask_env)
+    verifier = None
+    if settings is not None and settings.access:
+        verifier = Verifier(settings.access_team, settings.access_aud, settings.emails)
+    app.ask = ask.Ask(settings, args.data, app.ask_snapshot, verifier, cross_site=cross_site_request)
+    print(ask_line, file=sys.stderr, flush=True)
     srv = ThreadingHTTPServer((args.bind, args.port), make_handler(app))
     print(f"Wishlist Deals on http://{args.bind}:{args.port}/ (data in {args.data})", file=sys.stderr, flush=True)
     try:

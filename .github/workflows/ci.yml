@@ -20,12 +20,15 @@ concurrency:
 jobs:
   # The watcher's evaluation, notifications, digest and state.json (pinned by golden files), the snapshot
   # writer, targets.json, the server (same-origin guard, headers, run_status.json, deep health check), plus the
-  # privacy scanner's own tests, on every supported Python.
+  # privacy scanner's own tests, plus Ask (query layer, Access token checks, question loop with a fake model),
+  # on every supported Python. REQUIRE_OPENSSL makes a missing openssl an error instead of a skip.
   # Nothing here may be skipped: any "skipped" in the output fails the job.
   tests:
     name: Unit tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      REQUIRE_OPENSSL: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -48,7 +51,8 @@ jobs:
             exit 1
           fi
 
-  # deals.html in a real browser, against deals_server.py with a generated 60-game deals.json and a targets.json.
+  # deals.html in a real browser (the deals view and the Ask view, with the Ask API stubbed), against deals_server.py
+  # with a generated 60-game deals.json and a targets.json.
   page-smoke:
     name: Page smoke test (Chromium via Playwright)
     runs-on: ubuntu-latest
@@ -70,11 +74,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('tests/browser/requirements.txt') }}
       # On a cache hit the download is skipped; --with-deps still installs the system libraries.
       - run: playwright install --with-deps chromium
-      - name: Run the page test
+      - name: Run the page tests
         shell: bash
         run: |
           set -o pipefail
-          python -m unittest -v tests.browser.test_page 2>&1 | tee page.log
+          python -m unittest -v tests.browser.test_page tests.browser.test_ask_page 2>&1 | tee page.log
           if grep -Ei '\.\.\. skipped|skipped=' page.log; then echo "::error::a test was skipped"; exit 1; fi
 
   # install/alpine.sh twice (and a third time with one option changed) inside python:3.12-alpine, with apk, rc-*,

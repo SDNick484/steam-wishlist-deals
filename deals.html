@@ -133,14 +133,44 @@ section.group{display:flex;flex-direction:column;gap:10px}
 .empty{background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:24px;color:var(--ink-2)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:9px;font-size:14px;max-width:min(520px,calc(100vw - 32px));box-shadow:var(--shadow);z-index:10}
 footer{font-size:12.5px;color:var(--muted);max-width:90ch}
+
+.title-row{display:flex;align-items:center;gap:8px 14px;min-width:0}
+.title-row h1{min-width:0}
+#chatSlot{flex:none}
+#chatSlot:empty{display:none}
+#chatTop{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;text-decoration:none;font-size:13.5px;font-weight:600;color:var(--ink);background:var(--surface);white-space:nowrap}
+#chatTop:hover,#chatTop[aria-current="page"]{background:var(--surface-2);border-color:var(--surface-2)}
+#chatTop:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:999px}
+span.tag{cursor:default}
+span.tag:hover{color:var(--muted);text-decoration:none}
+.linkish{border:0;background:none;padding:0;color:var(--accent-ink);font-weight:600;cursor:pointer;font-size:13px}
+.wrap[data-mode="ask"] :is(#kinds,.filters,#notice,#groups,footer,#checkBtn){display:none!important}
+.wrap:not([data-mode="ask"]) #chatSec{display:none!important}
+#chatSec{display:flex;flex-direction:column;gap:14px;min-width:0}
+.chat-thread{display:flex;flex-direction:column;gap:14px;min-width:0}
+.chat-hint{font-size:14px;color:var(--muted);max-width:70ch}
+.chat-q{align-self:flex-end;max-width:min(85%,60ch);background:var(--accent-soft);color:var(--ink);padding:8px 12px;border-radius:12px 12px 4px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-turn{display:flex;flex-direction:column;gap:10px;min-width:0}
+.chat-a{color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;max-width:80ch}
+.chat-rows>:first-child{border-top:0}
+.chat-missing{padding:11px 16px;border-top:1px solid var(--line);color:var(--ink-2);overflow-wrap:anywhere}
+.chat-status{font-size:13.5px;color:var(--ink-2)}
+.chat-error{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid var(--crit-ink);border-radius:10px;background:var(--surface);padding:10px 14px;font-size:14px;color:var(--crit-ink)}
+.chat-form{position:sticky;bottom:0;z-index:5;display:flex;flex-direction:column;gap:6px;background:var(--bg);border-top:1px solid var(--line);padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))}
+.chat-form[hidden]{display:none}
+.chat-input{display:flex;gap:8px;min-width:0}
+.chat-input input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:16px}
+.chat-input input:disabled{opacity:.6}
+.chat-meta{font-size:13px;color:var(--muted)}
+.chat-meta .linkish[disabled]{color:var(--muted);cursor:default}
 </style>
 
-<div class="wrap">
+<div class="wrap" id="wrap" data-mode="list">
   <nav class="top" id="pagesNav" aria-label="Pages" hidden></nav>
   <header>
     <div class="title">
       <span class="eyebrow">Steam wishlist</span>
-      <h1>Wishlist Deals</h1>
+      <div class="title-row"><h1>Wishlist Deals</h1><span id="chatSlot"></span></div>
       <p class="headline" id="headline">Loading…</p>
       <p class="source" id="source"></p>
     </div>
@@ -205,6 +235,18 @@ footer{font-size:12.5px;color:var(--muted);max-width:90ch}
 
   <div id="groups"></div>
 
+  <section id="chatSec" aria-labelledby="chatH">
+    <h2 id="chatH">Ask about your wishlist</h2>
+    <div class="chat-thread" id="chatThread" aria-live="polite"></div>
+    <form class="chat-form" id="chatForm" autocomplete="off">
+      <div class="chat-input">
+        <input type="text" id="chatQ" enterkeyhint="search" maxlength="500" aria-label="Ask about your wishlist" placeholder="Loading your wishlist…" disabled>
+        <button class="btn" type="submit" id="chatSend" aria-label="Send" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 8h11M9 3.5 13.5 8 9 12.5"/></svg></button>
+      </div>
+      <div class="chat-meta" id="chatMeta"></div>
+    </form>
+  </section>
+
   <footer>Prices, all-time lows, ratings and tags come from IsThereAnyDeal and cover official stores only. Deck ratings come from Valve; ProtonDB ratings are community reports. Steam ratings are the share of positive user reviews; Metacritic and OpenCritic are critic averages out of 100. Ratings and tags refresh weekly; click a tag to filter by it. "New" means the deal wasn't in a notification yet. Target prices are saved on the server and checked at every scheduled run. The list updates <span id="schedText">on its schedule</span>, or when you choose Check now.</footer>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -232,6 +274,24 @@ const LEGACY_KINDS = [
   { k: "bundle", label: "In a bundle" },
   { k: "cut", label: "Deep discounts" },
 ];
+// Two page modes from the path: the list (/, /deals) and Ask (/ask, /deals/ask). BASE is the page's directory
+// ("/" or "/deals/"); links to the other mode are built from it, never as a bare relative "ask" (from /deals that
+// would resolve to /ask, which a shared hostname may route elsewhere). Fetches stay relative.
+const MODE = /\/ask\/?$/.test(location.pathname) ? "ask" : "list";
+const BASE = (() => {
+  const p = location.pathname.replace(/\/ask\/?$/, "/");
+  return /^\/deals\/?$/.test(p) ? "/deals/" : p.replace(/[^/]*$/, "");
+})();
+const CHAT_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v9a1.5 1.5 0 0 1-1.5 1.5h-8.5L6 20v-3.5H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5z"/></svg>`;
+const CHAT_FAIL = "AI search is unavailable right now, try again";
+const LEGACY_ASK = "The deals list is from an older watcher; run Check now on the list page.";
+// The Ask thread: in memory only, never in localStorage or sessionStorage. avail is null until the status call returns.
+let CHAT = newChat({ avail: null, turns: 5 });
+function newChat(keep) {
+  return { thread: [], results: [], draft: "", busy: false, error: null, errorStatus: null, retryable: false, turnsLeft: null,
+           avail: keep.avail, turns: keep.turns };
+}
+let LOADED = false;        // the first deals.json request has finished (with or without a list)
 const F = { scope: "sale", q: "", shop: "", tag: "", deck: "", sort: "rank", newOnly: false, minRating: 0, minCut: 0 };
 let SNAP = null;
 let RUN = null;            // the watcher's last run (api/deals/status), or null when it couldn't be loaded
@@ -300,7 +360,7 @@ function scheduleText() {
   if (!links.length) return;
   const nav = document.getElementById("pagesNav");
   nav.innerHTML = links.map((l) => `<a href="${esc(l.url)}">${esc(l.label)}</a>`).join("") +
-    `<a href="./" aria-current="page">Deals</a>`;
+    `<a href="./"${location.pathname.match(/\/ask\/?$/) ? "" : ' aria-current="page"'}>Deals</a>`;
   nav.hidden = false;
 })();
 
@@ -383,6 +443,17 @@ function render() {
   const legacy = !!SNAP && !hasGames();
   const all = !SNAP ? [] : legacy ? SNAP.deals.map(fromDeal) : SNAP.games;
   const fresh = all.filter((g) => g.new).length;
+  if (MODE === "ask") {
+    if (SNAP) {
+      const onSale = all.filter((g) => g.onSale).length;
+      $("headline").innerHTML = legacy ? `<b class="num">${all.length}</b> deal${all.length === 1 ? "" : "s"} across <b class="num">${SNAP.wishlistCount}</b> wishlist games`
+        : `<b class="num">${SNAP.games.length}</b> wishlist games · <b class="num">${onSale}</b> on sale`;
+      setSource();
+    } else if (LOADED) $("headline").textContent = "Your wishlist deals appear here after the first check.";
+    renderChat();
+    applyFocus();
+    return;
+  }
   const q = F.q.trim().toLowerCase();
 
   // Dropdown choices come from every game, so they don't shrink as you filter.
@@ -443,10 +514,7 @@ function render() {
       h += newTxt;
     }
     $("headline").innerHTML = h;
-    const nc = nextCheck();
-    $("source").textContent = `Checked ${when(SNAP.generatedAt)}` +
-      (SNAP.untracked ? ` · ${SNAP.untracked} not on IsThereAnyDeal` : "") +
-      (nc ? ` · next check ${nc.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "");
+    setSource();
   }
 
   // Notice: old data, targets unavailable, or rows hidden by the % filter.
@@ -473,18 +541,29 @@ function render() {
   } else if (legacy) {
     $("groups").innerHTML = LEGACY_KINDS.map((k) => {
       const rows = list.filter((g) => g.legacyKind === k.k);
-      return rows.length ? `<section class="group"><h2>${k.label} <small class="num">${rows.length}</small></h2><div class="list">${rows.map(row).join("")}</div></section>` : "";
+      return rows.length ? `<section class="group"><h2>${k.label} <small class="num">${rows.length}</small></h2><div class="list">${rows.map((g) => row(g)).join("")}</div></section>` : "";
     }).join("");
   } else {
-    $("groups").innerHTML = `<section class="group"><div class="list">${list.map(row).join("")}</div></section>`;
+    $("groups").innerHTML = `<section class="group"><div class="list">${list.map((g) => row(g)).join("")}</div></section>`;
   }
   applyFocus();
+}
+
+function setSource() {
+  const nc = nextCheck();
+  $("source").textContent = `Checked ${when(SNAP.generatedAt)}` +
+    (SNAP.untracked ? ` · ${SNAP.untracked} not on IsThereAnyDeal` : "") +
+    (nc ? ` · next check ${nc.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "");
 }
 
 function emptyText(legacy) {
   if (legacy) return "No deals match these filters.";
   const filtered = F.q || F.shop || F.tag || F.deck || F.minRating || F.newOnly || F.minCut;
-  if (filtered) return "No games match these filters.";
+  if (filtered) {
+    const q = F.q.trim();
+    return "No games match these filters." + (q && CHAT.avail
+      ? `<br><a id="chatInstead" href="${esc(BASE + "ask?draft=" + encodeURIComponent(q))}">Ask instead →</a>` : "");
+  }
   return { all: "Your wishlist is empty.", sale: "Nothing on your wishlist is on sale right now.",
            low: "Nothing on your wishlist is at an all-time low right now.", bundle: "None of your wishlist games are in a live bundle.",
            target: "No game is at or under its target price. Use <b>Set target</b> on any game to add one." }[F.scope];
@@ -584,7 +663,8 @@ function saveTarget(appid, price) {
   });
 }
 
-function row(g) {
+// opts.ask: a row inside the Ask thread. Its tag chips are plain text (there is no list to filter there).
+function row(g, opts = {}) {
   const bo = bundleOnly(g);
   const meta = [];
   if (bo) meta.push(esc(g.bundle.title)); else if (g.shop) meta.push(esc(g.shop));
@@ -610,7 +690,7 @@ function row(g) {
   }
   const pills = (g.new ? `<span class="pill new">New</span>` : "") + (newLowOf(g) ? `<span class="pill nl">Lowest ever</span>` : "") +
     (g.earlyAccess ? `<span class="pill ea">Early Access</span>` : "");
-  const tagsHtml = (g.tags || []).length ? `<div class="tags">${g.tags.map((t) =>
+  const tagsHtml = (g.tags || []).length ? `<div class="tags">${g.tags.map((t) => opts.ask ? `<span class="tag">${esc(t)}</span>` :
     `<button type="button" class="tag${t === F.tag ? " on" : ""}" data-tag="${esc(t)}" title="Show only ${esc(t)}">${esc(t)}</button>`).join("")}</div>` : "";
   const dealUrl = bo ? safeUrl(g.bundle.url) : (g.price ? safeUrl(g.url) : "");
   const dealLabel = bo ? "View bundle" : `Buy at ${g.shop}`;
@@ -678,11 +758,23 @@ async function loadRunStatus() {
   } catch (e) { RUN = null; }
 }
 
+async function loadAskStatus() {
+  try {
+    const r = await fetch("api/deals/ask/status", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    CHAT.avail = !!(j && j.ask === true);   // only a good answer can switch Ask off
+    if (CHAT.avail && Number.isInteger(j.turns) && j.turns > 0) CHAT.turns = j.turns;
+  } catch (e) { if (CHAT.avail == null) CHAT.avail = false; }   // a failed reload keeps what was known
+}
+
 async function load() {
   const snap = fetch("api/deals", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const [s] = await Promise.all([snap, loadTargets(), loadRunStatus()]);
-  SNAP = s;
+  const [s] = await Promise.all([snap, loadTargets(), loadRunStatus(), loadAskStatus()]);
+  if (s || MODE !== "ask" || !SNAP) SNAP = s;   // in Ask a failed reload keeps the good snapshot
+  LOADED = true;
+  renderPill();
   renderBanner();
   NEWLOW.clear();
   if (SNAP) (SNAP.deals || []).forEach((d) => { if (d.newLow) NEWLOW.add(d.appid); });
@@ -722,7 +814,8 @@ $("minRating").addEventListener("change", (e) => { F.minRating = Number(e.target
 $("minCut").addEventListener("change", (e) => { F.minCut = Number(e.target.value) || 0; saveF(); render(); });
 $("tag").addEventListener("change", (e) => { F.tag = e.target.value; render(); });
 $("deckF").addEventListener("change", (e) => { F.deck = e.target.value; saveF(); render(); });
-$("groups").addEventListener("click", (e) => {
+// The row controls are delegated on both containers: the list (#groups) and the Ask thread (#chatThread).
+function onRowClick(e) {
   const t = e.target.closest("button[data-tag]");
   if (t) {
     F.tag = F.tag === t.dataset.tag ? "" : t.dataset.tag; render();
@@ -735,17 +828,143 @@ $("groups").addEventListener("click", (e) => {
   else if ((n = id("data-tgt-save")) != null) submitEdit(n);
   else if ((n = id("data-tgt-cancel")) != null) cancelEdit(n);
   else if ((n = id("data-tgt-clear")) != null) { pendingFocus = `[data-tgt-open="${n}"]`; saveTarget(n, null); }
-});
-$("groups").addEventListener("input", (e) => {
+}
+function onRowInput(e) {
   if (e.target.matches("input[data-tgt-input]") && EDIT) { EDIT.value = e.target.value; if (EDIT.error) { EDIT.error = ""; e.target.setAttribute("aria-invalid", "false"); const m = document.getElementById("te-" + EDIT.appid); if (m) m.remove(); } }
-});
-$("groups").addEventListener("keydown", (e) => {
+}
+function onRowKey(e) {
   const inp = e.target.closest("input[data-tgt-input]");
   if (!inp) return;
   const n = Number(inp.dataset.tgtInput);
   if (e.key === "Enter") { e.preventDefault(); submitEdit(n); }
   else if (e.key === "Escape") { e.preventDefault(); cancelEdit(n); }
+}
+for (const id of ["groups", "chatThread"]) {
+  $(id).addEventListener("click", onRowClick);
+  $(id).addEventListener("input", onRowInput);
+  $(id).addEventListener("keydown", onRowKey);
+}
+
+// ---- Ask: a short thread over the wishlist, answered by deals_server.py (POST api/deals/ask). The answer is plain
+// text and always goes through esc(); its games are shown as the list's own rows.
+const chatReady = () => CHAT.avail === true && !!SNAP && hasGames();
+function renderPill() {
+  const href = BASE + "ask";
+  $("chatSlot").innerHTML = CHAT.avail
+    ? `<a id="chatTop" href="${esc(href)}" title="Ask about your wishlist"${MODE === "ask" ? ' aria-current="page"' : ""}>${CHAT_ICON}Ask</a>` : "";
+}
+function chatItemsHtml(items) {
+  if (!items.length) return "";
+  const byId = new Map(hasGames() ? SNAP.games.map((g) => [g.appid, g]) : []);
+  return `<div class="list chat-rows">${items.map((it) => {
+    const g = byId.get(Number(it && it.appid));
+    return g ? row(g, { ask: true }) : `<div class="chat-missing">${esc(it && it.name)}</div>`;
+  }).join("")}</div>`;
+}
+function chatThreadHtml() {
+  const c = CHAT;
+  let k = 0;
+  const turns = c.thread.map((turn) => {
+    if ("q" in turn) return `<div class="chat-q">${esc(turn.q)}</div>`;
+    return `<div class="chat-turn"><p class="chat-a">${esc(turn.a)}</p>${chatItemsHtml(c.results[k++] || [])}</div>`;
+  }).join("");
+  const busy = c.busy ? `<p class="chat-status" role="status">Thinking…</p>` : "";
+  const err = c.error
+    ? `<div class="chat-error" role="alert"><span>${esc(c.error)}</span>${c.retryable ? `<button type="button" class="btn" id="chatRetry">Retry</button>` : ""}</div>` : "";
+  const hint = !c.thread.length && !c.busy
+    ? `<p class="chat-hint">Ask about your wishlist in your own words: “cheapest Verified Steam Deck games under $15”, “what's at an all-time low and well reviewed?”</p>` : "";
+  return hint + turns + busy + err;
+}
+function renderChat() {
+  if (MODE !== "ask") return;
+  const c = CHAT, input = $("chatQ"), send = $("chatSend"), meta = $("chatMeta");
+  if (!LOADED || c.avail === null) {
+    $("chatThread").innerHTML = "";
+    input.disabled = send.disabled = true;
+    input.placeholder = "Loading your wishlist…";
+    meta.textContent = "";
+    return;
+  }
+  if (!chatReady()) {
+    const msg = !c.avail ? "Ask isn't available here." : !SNAP ? "No deals list on the server yet. Run Check now on the list page." : LEGACY_ASK;
+    $("chatThread").innerHTML = `<p class="chat-hint">${esc(msg)} <a href="${esc(BASE)}">Back to the list</a></p>`;
+    input.disabled = send.disabled = true;
+    $("chatForm").hidden = true;
+    return;
+  }
+  $("chatForm").hidden = false;
+  $("chatThread").innerHTML = chatThreadHtml();
+  const left = c.turnsLeft === null ? c.turns : c.turnsLeft;
+  const done = left <= 0 && !c.error;
+  input.disabled = send.disabled = c.busy || done;
+  input.placeholder = done ? "Start a new question to keep going" : "Ask about your wishlist…";
+  meta.innerHTML = `<button type="button" class="linkish" id="chatNew"${c.busy ? " disabled" : ""}>New question</button> · ${left} left`;
+}
+async function chatSend(retry) {
+  const c = CHAT;
+  if (c.busy || !chatReady()) return;
+  const last = c.thread[c.thread.length - 1];
+  if (!retry) {
+    const q = (c.draft || "").trim();
+    if (!q) return;
+    if (last && "q" in last) c.thread.pop();   // replace a failed, unanswered question
+    c.thread.push({ q });
+    c.draft = "";
+    $("chatQ").value = "";
+  } else if (!last || !("q" in last)) {
+    return;
+  }
+  c.error = null; c.errorStatus = null; c.retryable = false; c.busy = true;
+  renderChat();
+  try {
+    const r = await fetch("api/deals/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+                                             body: JSON.stringify({ thread: c.thread }) });
+    let body = null;
+    try { body = await r.json(); } catch (e) {}
+    if (CHAT !== c) return;             // New question was pressed meanwhile
+    if (!r.ok) {
+      c.error = (body && typeof body.error === "string" && body.error) || CHAT_FAIL;
+      c.errorStatus = r.status;
+      // Retrying can't help a bad request, a sign-in problem or the daily cap (a 429 without Retry-After).
+      c.retryable = ![400, 401, 403].includes(r.status) && !(r.status === 429 && !r.headers.get("Retry-After"));
+    } else {
+      c.thread.push({ a: String((body && body.answer) || "").slice(0, 1000) || "No answer." });
+      c.results.push(body && Array.isArray(body.items) ? body.items : []);
+      if (body && typeof body.turns_left === "number") c.turnsLeft = body.turns_left;
+    }
+  } catch (e) {
+    if (CHAT !== c) return;
+    c.error = CHAT_FAIL; c.errorStatus = null; c.retryable = true;
+  } finally {
+    c.busy = false;
+    if (CHAT === c) {
+      renderChat();
+      const qs = document.querySelectorAll("#chatThread .chat-q");
+      if (qs.length) qs[qs.length - 1].scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }
+}
+$("chatQ").addEventListener("input", (e) => { CHAT.draft = e.target.value; });
+$("chatForm").addEventListener("submit", (e) => { e.preventDefault(); CHAT.draft = $("chatQ").value; chatSend(false); });
+$("chatSec").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.id === "chatRetry") chatSend(true);
+  else if (t.id === "chatNew") { CHAT = newChat(CHAT); $("chatQ").value = ""; renderChat(); $("chatQ").focus(); }
 });
+
+$("wrap").dataset.mode = MODE;
+if (MODE === "ask") {
+  document.title = "Ask your wishlist";
+  // "Ask instead" on the list carries the search here as ?draft=: fill the input, don't send, drop it from the URL.
+  const draft = new URLSearchParams(location.search).get("draft");
+  if (draft !== null) {
+    CHAT.draft = draft.slice(0, 500);
+    $("chatQ").value = CHAT.draft;
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  }
+  renderChat();
+}
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 $("schedText").textContent = scheduleText();
 load();

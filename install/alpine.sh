@@ -20,7 +20,10 @@
 #   NAV              header link to another page, LABEL=URL with no spaces
 #   TZ_NAME          set the system time zone, e.g. America/New_York (default: leave as is)
 #
-# Safe to re-run: code is updated, your config and state are kept, and the install options are
+# Ask (AI search) is configured in ~/.config/wishlist-deals/ask.env, created empty on first install; it stays
+# off until you set ANTHROPIC_SEARCH_KEY there. See the README's "AI search (Ask)" section.
+#
+# Safe to re-run: code is updated, your config, ask.env and state are kept, and the install options are
 # remembered (in /etc/steam-wishlist-deals.conf). Set NAV= (empty) to remove a link.
 set -eu
 
@@ -64,7 +67,7 @@ mkdir -p "$PREFIX" "$HOME_DIR/.config/wishlist-deals" "$HOME_DIR/exports" "$HOME
 
 say "Installing to $PREFIX"
 install -m 0755 "$SRC/wishlist_deals.py" "$SRC/deals_server.py" "$PREFIX/"
-install -m 0644 "$SRC/deals.html" "$PREFIX/"
+install -m 0644 "$SRC/deals.html" "$SRC/deals_query.py" "$SRC/access_jwt.py" "$SRC/ask.py" "$PREFIX/"
 # Stamp the build id into the INSTALLED server only (never the checkout): the short commit this checkout is at.
 # Without git, or outside a checkout, the placeholder stays and the server reports "unknown".
 BUILD_ID=$(git -c safe.directory="$SRC" -C "$SRC" rev-parse --short HEAD 2>/dev/null) || BUILD_ID=""
@@ -151,6 +154,37 @@ else
     echo "Added [output] deals_json"
   fi
 fi
+
+# Ask settings. Created once (empty, so Ask stays off) and never touched again.
+ASK_DIR="$HOME_DIR/.config/wishlist-deals"
+ASKF="$ASK_DIR/ask.env"
+chmod 700 "$ASK_DIR"
+if [ ! -f "$ASKF" ]; then
+  umask 077
+  cat > "$ASKF" <<'EOF'
+# Settings for Ask (AI search), read by deals_server.py at start-up. KEY=VALUE, one per line.
+# Ask is off until ANTHROPIC_SEARCH_KEY is set. Edit this file (it must stay mode 600), then run:
+#   rc-service wishlist-deals restart
+# See the README section "AI search (Ask)" for where to find each value.
+
+# Anthropic API key, ideally from its own Console workspace with a spend limit.
+ANTHROPIC_SEARCH_KEY=
+# Model id; empty means claude-haiku-5-5.
+ANTHROPIC_SEARCH_MODEL=
+# Questions per day across everyone; empty means 200.
+ASK_DAILY_LIMIT=
+# Cloudflare Access team domain, e.g. your-team.cloudflareaccess.com
+ASK_ACCESS_TEAM=
+# Audience (AUD) tag of the Access application that covers this page's hostname: the dashboard's application, the same value as the Backlog app's ask.env.
+ASK_ACCESS_AUD=
+# Comma-separated emails allowed to ask; empty means any user Access lets in.
+ASK_EMAILS=
+# 1 = also allow direct requests from your LAN, opened by IP address (see the README); empty or 0 = off.
+ASK_LAN=
+EOF
+  umask 022
+  echo "Wrote $ASKF"
+fi
 chown -R "$APP_USER:$APP_USER" "$HOME_DIR"
 chown -R root:root "$PREFIX"
 
@@ -188,7 +222,7 @@ cat > /etc/init.d/wishlist-deals <<EOF
 name="wishlist-deals"
 description="Steam Wishlist Deals page"
 command="/usr/bin/python3"
-command_args="$PREFIX/deals_server.py --port $PORT --data $HOME_DIR/exports --check-times $CHECK_TIMES $NAV_ARG"
+command_args="$PREFIX/deals_server.py --port $PORT --data $HOME_DIR/exports --check-times $CHECK_TIMES --ask-env $ASKF $NAV_ARG"
 command_user="$APP_USER:$APP_USER"
 supervisor="supervise-daemon"
 respawn_delay=5
@@ -230,4 +264,5 @@ fi
 
 say "Done"
 echo "Config: $CFG"
+echo "Ask settings: $ASKF"
 echo "Logs:   $HOME_DIR/logs/"
