@@ -86,8 +86,9 @@ INIT=/etc/init.d/wishlist-deals
 LOGROTATE=/etc/logrotate.d/steam-wishlist-deals
 DECOY=/etc/logrotate.d/zz-installer-check-other-app
 CFG=$HOME_DIR/.config/wishlist-deals/config.ini
+ASKF=$HOME_DIR/.config/wishlist-deals/ask.env
 # Start from a machine that has never had the installer (matters when this is re-run in the same VM).
-rm -f "$SAVED" "$INIT" "$CFG" "$LOGROTATE"
+rm -f "$SAVED" "$INIT" "$CFG" "$ASKF" "$LOGROTATE"
 rm -rf "$PREFIX"
 mkdir -p /etc/crontabs /etc/init.d /etc/logrotate.d "$HOME_DIR"
 # Another app's logrotate file, and every other file already in the directory, must come through untouched.
@@ -121,7 +122,7 @@ check "the config has the default notify service placeholder" grep -q '^service 
 check "the config is mode 600" test "$(stat -c %a "$CFG")" = 600
 check "saves the options" sh -c "grep -q \"SAVED_PORT='8585'\" '$SAVED' && grep -q \"SAVED_CHECK_TIMES='06:15,18:45'\" '$SAVED' && grep -q \"SAVED_NAV='Backlog=http://backlog.example.com:8686/'\" '$SAVED'"
 check "init script uses the port, check times and nav link" \
-  grep -q -- "--port 8585 .*--check-times 06:15,18:45 --nav Backlog=http://backlog.example.com:8686/" "$INIT"
+  grep -q -- "--port 8585 .*--check-times 06:15,18:45 --ask-env .* --nav Backlog=http://backlog.example.com:8686/" "$INIT"
 check "init script is executable" test -x "$INIT"
 check "unrelated cron line before the block is kept" grep -qx '0 3 \* \* \* /usr/local/bin/other-job.sh' "$TAB"
 check "unrelated cron line after the block is kept" grep -qx '30 6 \* \* \* /usr/local/bin/another-job.sh' "$TAB"
@@ -132,6 +133,18 @@ check "exactly one BEGIN" test "$(count '^# BEGIN steam-wishlist-deals$' "$TAB")
 check "exactly one END" test "$(count '^# END steam-wishlist-deals$' "$TAB")" = 1
 check "installed the files with the right modes" sh -c "[ \"\$(stat -c %a '$PREFIX/wishlist_deals.py')\" = 755 ] && [ \"\$(stat -c %a '$PREFIX/deals_server.py')\" = 755 ] && [ \"\$(stat -c %a '$PREFIX/deals.html')\" = 644 ]"
 check "installed every top-level file the server and watcher need" sh -c "cd '$SRC' && for f in wishlist_deals.py deals.html; do cmp -s \"\$f\" '$PREFIX'/\$f || exit 1; done && grep -v '^BUILD = ' deals_server.py > '$STUBS/srv.a' && grep -v '^BUILD = ' '$PREFIX/deals_server.py' > '$STUBS/srv.b' && cmp -s '$STUBS/srv.a' '$STUBS/srv.b'"
+check "installed the Ask modules, mode 644" sh -c "for m in ask access_jwt deals_query; do [ \"\$(stat -c %a '$PREFIX'/\$m.py)\" = 644 ] || exit 1; done"
+check "the installed server imports the Ask modules" sh -c "cd '$PREFIX' && python3 -c 'import deals_server, ask, deals_query, access_jwt'"
+check "the config directory is mode 700" test "$(stat -c %a "$HOME_DIR/.config/wishlist-deals")" = 700
+check "creates ask.env, mode 600" test "$(stat -c %a "$ASKF")" = 600
+if [ "${FAKE_USERS:-}" = 1 ]; then
+  check "ask.env is chowned to the app user (chown is stubbed here)" sh -c "grep -q '^chown -R steam:steam /home/steam' '$CALLS'"
+else
+  check "ask.env is owned by steam:steam" test "$(stat -c %U:%G "$ASKF")" = steam:steam
+fi
+check "ask.env settings are all empty" sh -c "grep -qE '^[A-Z_]+=' '$ASKF' && ! grep -E '^[A-Z_]+=' '$ASKF' | grep -qvE '^[A-Z_]+=\$'"
+check "ask.env lists the seven settings" sh -c "for k in ANTHROPIC_SEARCH_KEY ANTHROPIC_SEARCH_MODEL ASK_DAILY_LIMIT ASK_ACCESS_TEAM ASK_ACCESS_AUD ASK_EMAILS ASK_LAN; do grep -q \"^\$k=\" '$ASKF' || exit 1; done"
+check "init script passes --ask-env" grep -q -- "--ask-env $ASKF" "$INIT"
 check "the installed server and watcher compile" sh -c "cd '$PREFIX' && python3 -m py_compile deals_server.py wishlist_deals.py"
 check "enabled and restarted the service" grep -q '^rc-service wishlist-deals restart' "$CALLS"
 check "enabled and restarted crond" sh -c "grep -q '^rc-update add crond' '$CALLS' && grep -q '^rc-service crond restart' '$CALLS'"
@@ -169,6 +182,9 @@ cp "$TAB" "$STUBS/tab.first"
 sed -i 's/^low_tolerance_pct = 0$/low_tolerance_pct = 7/' "$CFG"
 echo "# edited by the user" >> "$CFG"
 cp "$CFG" "$STUBS/cfg.before"
+# The user fills in a key; later runs must never touch ask.env.
+echo "ANTHROPIC_SEARCH_KEY=test-not-a-key" >> "$ASKF"
+sha256sum "$ASKF" > "$STUBS/ask.sha"
 echo "# edited by hand" >> "$LOGROTATE"      # a re-run must put its own file back
 run second
 
@@ -177,6 +193,9 @@ check "re-run: the logrotate file is rewritten identically" cmp -s "$LOGROTATE" 
 check "re-run: no other logrotate file was touched or added" sh -c "cd /etc/logrotate.d && for f in *; do [ \"\$f\" = steam-wishlist-deals ] || cksum \"\$f\"; done | cmp -s - '$STUBS/logrotate.before'"
 check "re-run: the build stamp is still there" grep -qx 'BUILD = "abc1234"' "$PREFIX/deals_server.py"
 check "keeps the config mode 600" test "$(stat -c %a "$CFG")" = 600
+check "keeps ask.env byte for byte" sha256sum -c "$STUBS/ask.sha"
+check "keeps ask.env mode 600" test "$(stat -c %a "$ASKF")" = 600
+check "the init script still passes --ask-env" grep -q -- "--ask-env $ASKF" "$INIT"
 check "remembers PORT" grep -q -- "--port 8585 " "$INIT"
 check "remembers CHECK_TIMES" grep -q -- "--check-times 06:15,18:45" "$INIT"
 check "remembers NAV" grep -q -- "--nav Backlog=http://backlog.example.com:8686/" "$INIT"
@@ -198,6 +217,7 @@ check "still exactly one block after the third run" test "$(count '^# BEGIN stea
 check "the block holds one job" test "$(grep -c 'wishlist_deals.py' "$TAB")" = 1
 check "unrelated cron lines still there after the third run" sh -c "grep -qx '0 3 \* \* \* /usr/local/bin/other-job.sh' '$TAB' && grep -qx '30 6 \* \* \* /usr/local/bin/another-job.sh' '$TAB'"
 check "the config is still untouched" cmp -s "$CFG" "$STUBS/cfg.before"
+check "ask.env still untouched after the third run" sha256sum -c "$STUBS/ask.sha"
 
 # ================================================================== re-run: no git
 run fourth STUB_GIT_FAIL=1

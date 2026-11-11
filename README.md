@@ -35,6 +35,8 @@ The project uses only Python's standard library, and the page is a single HTML f
 | `wishlist_deals.py` | The watcher: reads your wishlist, finds deals, notifies, writes `deals.json` for the page |
 | `deals_server.py` | Serves the deals page and its JSON, and saves target prices |
 | `deals.html` | The deals page |
+| `deals_query.py`, `access_jwt.py`, `ask.py` | Ask (AI search): the read-only wishlist queries, Cloudflare Access token checks, and the question loop. Imported by the server at start-up, so keep them next to `deals_server.py` |
+| `ask_log.jsonl` | Not in the repo: the server writes it into the data directory (see [AI search (Ask)](#ai-search-ask)) |
 | `examples/config.example.ini` | Every setting, documented |
 | `install/alpine.sh` | Installer for Alpine Linux (OpenRC); works well in a small Proxmox LXC |
 | `contrib/systemd/` | Service and timer units for systemd hosts |
@@ -73,6 +75,7 @@ sh install/alpine.sh
 The installer sets up:
 - an unprivileged `steam` user and the code in `/opt/steam-wishlist-deals`
 - the config at `/home/steam/.config/wishlist-deals/config.ini` (mode 600)
+- an empty settings file for [Ask](#ai-search-ask) at `/home/steam/.config/wishlist-deals/ask.env` (mode 600), created once and never overwritten
 - checks at 10:40 and 19:40, as their own marked block in the `steam` user's crontab
 - the deals page as an OpenRC service on port 8485
 - log rotation for this app's own two logs (see [Log rotation](#log-rotation))
@@ -158,6 +161,9 @@ The server's API, also reachable under `/deals/api/deals/...` for setups that on
 | `GET /api/deals/targets` | `{"version": 1, "currency": "USD", "targets": {...}}` |
 | `PUT /api/deals/targets/{appid}` with `{"price": 12.5}` | `{"appid", "price", "previous"}` |
 | `DELETE /api/deals/targets/{appid}` | `{"appid", "previous"}` |
+| `GET /api/deals/ask/status` | `{"ask": true, "turns": 5}` when this request may use [Ask](#ai-search-ask), else `{"ask": false}` |
+| `POST /api/deals/ask` with `{"thread": [{"q": "..."}]}` | `{"answer", "items", "turns_left"}` |
+| `GET /ask` (also `/deals/ask`) | The deals page with Ask showing |
 
 Writes need `Content-Type: application/json` and a body of at most 1 KB. The price must be above 0 and at most 1000 (rounded to cents), and there's a limit of 5,000 targets. Anything else gets a 400 with a short error.
 
@@ -166,11 +172,14 @@ Writes need `Content-Type: application/json` and a body of at most 1 KB. The pri
 The product needs only the Python standard library. The tests use `unittest`, and CI adds test-only tools (Playwright, shellcheck) that are never installed on a server.
 
 ```sh
-# Evaluation, notifications and digest (pinned by golden files), the snapshot, targets.json, the server, the privacy scanner
-python3 -m unittest -v
+# Evaluation, notifications and digest (pinned by golden files), the snapshot, targets.json, the server, Ask, the privacy scanner
+REQUIRE_OPENSSL=1 python3 -m unittest -v
 
-# The page in a real browser (pip install -r tests/browser/requirements.txt && playwright install chromium)
-REQUIRE_BROWSER=1 python3 -m unittest -v tests.browser.test_page
+# The Ask tests need openssl (they sign test tokens); REQUIRE_OPENSSL=1 makes a missing one an error, not a skip
+REQUIRE_OPENSSL=1 python3 -m unittest -v tests.test_ask tests.test_access_jwt tests.test_deals_query
+
+# The pages in a real browser (pip install -r tests/browser/requirements.txt && playwright install chromium)
+REQUIRE_BROWSER=1 python3 -m unittest -v tests.browser.test_page tests.browser.test_ask_page
 
 # The Alpine installer, stubbed (changes /etc and /opt: run it in a container)
 docker run --rm -v "$PWD":/src:ro python:3.12-alpine sh /src/tests/installer/check.sh
@@ -183,7 +192,8 @@ What each part checks:
 
 - **Unit tests** run the watcher against local stand-ins for Steam, ITAD and ProtonDB and check that alerts, the digest and `state.json` haven't changed, that `deals.json` has the shape the page expects, how `targets.json` is read and written, every route of the server, the same-origin guard on every changing route, the response headers, `run_status.json` (shape, classes, counting, the failure and recovery notices), the deep health check and the build id. They also include the privacy scanner's own tests.
 - **Page test** starts `deals_server.py` over a generated 60-game `deals.json` and a `targets.json`, then opens `deals.html` in Chromium at 390x844, in light and dark, at `/` and at `/deals` (no trailing slash). It checks that each scope's number matches the rows listed, the minimum % filter and its "bundle-only deals hidden" line, that a target can be set, edited and cleared with the target view updating without a reload and the value surviving one, that an older `deals.json` without `games` shows the fallback message, that the failed-run and stale-data banner shows, dismisses and stays hidden when healthy, that there are no console errors, and that the page never scrolls sideways.
-- **Installer test** runs `install/alpine.sh` in `python:3.12-alpine` twice (and a third time with one option changed, a fourth without git): the config and the saved options are kept, the logrotate file is written for this app's logs only and rewritten on a re-run, the build id is stamped into the installed server and never into the checkout, there is exactly one `BEGIN`/`END` cron block, unrelated cron lines survive, and nothing but the local health check touches the network.
+- **Ask tests** cover the read layer over `deals.json` and `targets.json`, the Access token checks, the question loop with a scripted fake model (no network), the daily cap, the log, and the server's Ask routes under both prefixes. `tests/browser/test_ask_page.py` checks the Ask pill and an answer in Chromium with the API stubbed.
+- **Installer test** runs `install/alpine.sh` in `python:3.12-alpine` twice (and a third time with one option changed, a fourth without git): the Ask modules are installed and `ask.env` is created empty (mode 600) and kept byte for byte on re-runs, the config and the saved options are kept, the logrotate file is written for this app's logs only and rewritten on a re-run, the build id is stamped into the installed server and never into the checkout, there is exactly one `BEGIN`/`END` cron block, unrelated cron lines survive, and nothing but the local health check touches the network.
 - **Lint** runs shellcheck on every shell script, `py_compile` on every Python file and `systemd-analyze verify` on `contrib/systemd`.
 
 CI runs on pushes to `main`, pull requests, weekly, and on demand. The unit tests run on Python 3.11 to 3.14 and fail if any test is skipped; the other jobs use one version. Every third-party action is pinned to a full commit SHA with its version in a comment, and Dependabot updates them (and the test-only Playwright pin) weekly.
@@ -202,6 +212,49 @@ The denylist holds things no pattern can know (your hostnames, domain, name, tim
 6. Choose **Add secret**.
 
 Until it exists, the job runs the pattern checks only and shows a warning. Pull requests from forks, and Dependabot's, can't read the secret and get the same warning. To check locally: `PRIVACY_DENYLIST="$(cat my-terms.txt)" python3 .github/scripts/privacy_scan.py`. A line can opt out with the text `privacy-scan: allow` (say why beside it).
+
+## AI search (Ask)
+
+**Ask** lets you question your wishlist in plain language ("what's on sale under $10 that runs on the Deck?", "which games are at or below my target?") at `https://steam.example.com/deals/ask`. It answers with the matching games as the same rows the list shows. A small **Ask** pill appears in the page header when it is on. Ask is off until an API key is set.
+
+**Setup**
+
+1. In the Anthropic Console, create an API key, ideally in its own workspace with a monthly spend limit.
+2. Edit the settings file the installer created and fill in the lines below: `vim /home/steam/.config/wishlist-deals/ask.env`. Type the key into the file yourself; don't paste it into a chat, a ticket or a shell command line.
+3. Run `rc-service wishlist-deals restart`.
+
+The file is `KEY=VALUE` lines; quotes are optional and `#` starts a comment. The server refuses to read it if group or others can read or write it (`chmod 600`). The installer creates it empty and never touches an existing one, so re-running the installer keeps your settings. If you don't use the installer, pass `--ask-env PATH` to `deals_server.py` (default `~/.config/wishlist-deals/ask.env`).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `ANTHROPIC_SEARCH_KEY` | empty (Ask is off) | API key |
+| `ANTHROPIC_SEARCH_MODEL` | `claude-haiku-5-5` | Model used to answer |
+| `ASK_DAILY_LIMIT` | `200` | Questions per day across everyone, for this app (the Backlog app counts its own) |
+| `ASK_ACCESS_TEAM` | empty | Your Cloudflare Access team domain, e.g. `your-team.cloudflareaccess.com` |
+| `ASK_ACCESS_AUD` | empty | The deals page's Access application Audience (AUD) tag |
+| `ASK_EMAILS` | empty (any user Access lets in) | Comma-separated emails allowed to ask, e.g. `you@example.com` |
+| `ASK_LAN` | `0` | `1` lets direct requests from your LAN ask (see below) |
+
+**Who can ask.** Ask needs to know who is asking, because it spends money. There are two ways in:
+
+- **Through Cloudflare Access** (Tunnel + Access in front of the page). The server checks the signed Access token on each request (RS256 signature, audience, issuer, expiry), so the `Cf-Access-Authenticated-User-Email` header alone is never trusted. Set `ASK_ACCESS_TEAM` and `ASK_ACCESS_AUD`, and optionally `ASK_EMAILS` to limit it to certain people. Find the team domain in Cloudflare Zero Trust under Settings, Custom pages. Find the AUD under Access, Applications, the application that covers this page, Overview, Application Audience (AUD) Tag. This is the deals page's own application, not the Backlog dashboard's; each has its own AUD. The application must cover the page's hostname, e.g. `steam.example.com`.
+- **From your LAN**, with `ASK_LAN=1`. A request is accepted only if all of these hold: it comes straight from a private or loopback address, it carries no Cloudflare headers (`Cf-Ray`, `Cf-Connecting-Ip`), and you opened the page by IP address (`http://<server-ip>:8485/ask`), not by a hostname. The hostname rule stops a DNS-rebinding page from reaching Ask. If you put a reverse proxy on the same machine, leave `ASK_LAN` off: its requests arrive from a private address.
+
+With neither set up, Ask answers 401. Leave `ASK_ACCESS_*` empty and `ASK_LAN` at `0` if you want it off even with a key.
+
+**Limits.** A thread holds at most 5 questions (start a new question to clear it). Each question runs at most 5 rounds of lookups and 60 seconds, and at most 2 questions run at once (others get a "busy" answer you can retry). The daily cap counts questions since local midnight in the server's time zone; when it is reached Ask answers "daily limit reached" until the next day. `ASK_DAILY_LIMIT=0` turns every question away.
+
+**Cost** (Claude Haiku 5.5, model id `claude-haiku-5-5`, at $0.10 / $0.50 per MTok input / output for prompts up to 100k tokens, and $0.50 / $2.50 above that, priced per request; checked 2026-11-10 at platform.claude.com/docs/en/about-claude/pricing and platform.claude.com/docs/en/models/haiku-5-5/overview). Haiku 5.5's tokenizer counts about 30% more tokens than Haiku 4.5 for the same text, so the figures below assume 3 characters per token:
+
+- **Typical question** (2 to 3 rounds, about 10k input and 600 output tokens in total; the instructions and tools are about 4.3k characters, roughly 1.5k tokens, resent each round, and a typical lookup result is about 5k characters, roughly 1.7k tokens): about $0.0013.
+- **Worst case:** one question can reach roughly 130k input tokens (5 rounds, each resending the 1.5k-token instructions and tools plus up to 3 lookup results of 12,000 characters, about 4k tokens, from every earlier round) and about 10k output tokens: about $0.018. The 40k-token forced-finish rule is checked only between rounds, so it does not cap this. Each round's prompt stays under 100k tokens (the largest is about 51k), so the base price applies.
+- **At the default cap of 200 a day:** about $0.26 a day typically, and at most about $3.60 a day if every question hit the worst case ($0.018 x 200).
+
+Prices change; check the pricing page, and the daily cap and a spend limit on the Console workspace are what bound spend.
+
+**Data sent to Anthropic** (api.anthropic.com only): each question and the results of the lookups the model makes, which can include game names, prices, discounts, stores, your target prices, Deck and ProtonDB ratings and review scores. Never your SteamID, profile name, file paths or keys. Your API key stays on the server: it is read into memory, never logged and never sent to the browser.
+
+**Log.** `ask_log.jsonl` in the data directory (mode 600) gets one JSON line per request: who asked, rounds, token counts, how many answer items were dropped and the status. The question text is never stored. Entries older than 90 days are removed.
 
 ## Security
 

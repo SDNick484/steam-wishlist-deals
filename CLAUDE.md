@@ -18,6 +18,10 @@ BusyBox crond is the primary target, systemd units are secondary.
 - `run_status.json` (data dir, next to `deals.json`): written by the watcher after every real run (not
   `--dry-run`; `--snapshot-only` is recorded too, without notices); `Stage`, `record_run()`, `next_run_status()` and `send_notice()` are in
   `wishlist_deals.py`. The server reads it for `GET /api/deals/status` and `GET /healthz?deep=1`
+- `deals_query.py`: the read-only query layer over `deals.json` and `targets.json` that Ask's tools use
+- `ask.py`: Ask (AI search): settings from `ask.env`, the tools, the question loop, the daily cap and `ask_log.jsonl`
+- `access_jwt.py`: Cloudflare Access token verification (RS256, audience, issuer, expiry; needs `openssl`)
+- `tests/ask_shim.py`: runs `deals_server.py` with the model call replaced by a scripted fake; test entry point only
 - `deals.html`: the whole page (HTML, CSS and JS in one file). It fetches relative `api/deals` and
   `api/deals/targets`
 - `install/alpine.sh`: the installer. It keeps config and data, remembers its options in
@@ -56,14 +60,19 @@ BusyBox crond is the primary target, systemd units are secondary.
   notice when a full run succeeds after a streak of 3 or more; quiet runs never notify
 - `BUILD` in `deals_server.py` is an `export-subst` placeholder (`.gitattributes`); the installer stamps the
   installed copy only. Never commit a real hash into it
+- **`access_jwt.py` is a copy of steam-backlog-triage's; change it there first**
+- **`ask.py` follows triage's; keep behavior in step**
+- **The server never reads `config.ini` or `state.json`**: Ask sees only `deals.json`, `targets.json` and `run_status.json` from the data directory
+- **`deals_query.py` mirrors `deals.html`; the page wins** when they disagree
+- `ask.env` is created once by the installer (mode 600) and never overwritten
 - Installers stay safe to re-run. Behavior or option changes update the README in the same PR
 
 ## Commands
 
 ```sh
-python3 -m unittest -v                                   # unit tests, no skips allowed
+REQUIRE_OPENSSL=1 python3 -m unittest -v                 # unit tests, no skips allowed
 pip install -r tests/browser/requirements.txt && playwright install chromium
-REQUIRE_BROWSER=1 python3 -m unittest -v tests.browser.test_page      # the page in Chromium
+REQUIRE_BROWSER=1 python3 -m unittest -v tests.browser.test_page tests.browser.test_ask_page   # the pages in Chromium
 docker run --rm -v "$PWD":/src:ro python:3.12-alpine sh /src/tests/installer/check.sh
 sh .github/scripts/lint.sh                               # shellcheck, py_compile, systemd-analyze verify
 python3 .github/scripts/privacy_scan.py                  # files and history
