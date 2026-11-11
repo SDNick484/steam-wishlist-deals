@@ -434,6 +434,16 @@ def make_handler(app: App):
                 return self.json(404, {"error": "not found"})
             return self.targets_call(lambda: app.clear_target(parse_appid(text)))
 
+        def drain_body(self) -> None:
+            """Read and discard a small request body so an early answer isn't met with a reset. Only a body of
+            1..ask.POST_MAX bytes is read; an over-limit or unparseable length never is."""
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return
+            if 0 < n <= ask.POST_MAX:
+                self.rfile.read(n)
+
         def ask_post(self) -> None:
             try:
                 n = int(self.headers.get("Content-Length") or 0)
@@ -464,8 +474,10 @@ def make_handler(app: App):
             if m and not m.group(1):
                 return self.ask_post()
             if self.path.split("?", 1)[0] in ("/api/deals/refresh", "/deals/api/deals/refresh"):
+                self.drain_body()
                 status, obj = app.refresh_deals()
                 return self.json(status, obj)
+            self.drain_body()
             self.json(404, {"error": "not found"})
 
     return Handler

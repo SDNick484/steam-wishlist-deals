@@ -253,16 +253,20 @@ class DealsServer:
             [sys.executable, str(ROOT / "deals_server.py"), "--port", str(self.port), "--bind", "127.0.0.1",
              "--data", str(self.dir), "--check-times", "10:40,19:40", "--nav", "Backlog=https://backlog.example.com/"],
             stdout=self._log, stderr=subprocess.STDOUT)
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            if self.proc.poll() is not None:
-                raise RuntimeError("deals_server.py exited early:\n" + self.output())
-            try:
-                if self.get("/healthz")[0] == 200:
-                    return self
-            except OSError:
-                time.sleep(0.05)
-        raise RuntimeError("deals_server.py did not answer /healthz in 15 s:\n" + self.output())
+        try:
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                if self.proc.poll() is not None:
+                    raise RuntimeError("deals_server.py exited early:\n" + self.output())
+                try:
+                    if self.get("/healthz")[0] == 200:
+                        return self
+                except OSError:
+                    time.sleep(0.05)
+            raise RuntimeError("deals_server.py did not answer /healthz in 15 s:\n" + self.output())
+        except BaseException:
+            self.stop()
+            raise
 
     def stop(self) -> None:
         if self.proc and self.proc.poll() is None:

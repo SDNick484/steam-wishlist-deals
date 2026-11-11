@@ -195,6 +195,15 @@ class Relaxation(Base):
         self.assertNotIn("scope", out["relaxed"])
         self.assertGreater(out["matches"], 0)
 
+    def test_relaxed_never_names_a_filter_with_no_effect(self):
+        doc = copy.deepcopy(FX.snapshot)
+        for g in doc["games"]:
+            g["new"] = False
+        s = dq.build_snapshot(doc, int_targets(FX.targets), None)
+        out = dq.find_out(s, scope="all", min_cut=50, new_only=True)
+        self.assertEqual(out["relaxed"], ["new_only"])
+        self.assertIn("ignored: new_only.", out["note"])
+
     def test_exact_when_something_matches(self):
         out = dq.find_out(snap(), scope="sale", min_cut=50)
         self.assertIs(out["exact"], True)
@@ -289,6 +298,13 @@ class Tools(Base):
         self.assertIsNone(b["price"])
         nodeck = dq.find_out(snap(), scope="all", query="No price 01")["games"][0]
         self.assertEqual((nodeck["deck"], nodeck["protondb"]), (None, "borked"))
+
+    def test_get_game_non_ascii_digits_are_a_name(self):
+        s = snap()
+        for text in ("\u00b2", "\u2460", "\u0663"):
+            with self.subTest(text=text):
+                out = dq.game_out(s, game=text)
+                self.assertIs(out["found"], False)
 
     def test_get_game(self):
         s = snap()

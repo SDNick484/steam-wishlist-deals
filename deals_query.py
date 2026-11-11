@@ -447,6 +447,8 @@ def find(snap: Snapshot | None, *, relax: bool, **args: Any) -> dict:
         for name in RELAX_ORDER:
             if _unset(work, name):
                 continue
+            if name == "min_cut" and work["scope"] not in CUT_SCOPES:
+                continue      # it has no effect here, so dropping it must not be reported as a relaxation
             if name == "query":
                 close = set(suggest(work["query"], (g["title"] for g in s.games)))
                 if close:
@@ -530,7 +532,7 @@ def game_out(snap: Snapshot | None, *, game) -> dict:
     text = str(game).strip()
     if not text:
         raise QueryError("game must be an app id or a game name.")
-    if text.isdigit():
+    if text.isascii() and text.isdigit():
         hit = next((g for g in s.games if g["appid"] == int(text)), None)
         if hit:
             return {"found": True, "game": _detail(s, hit, at)}

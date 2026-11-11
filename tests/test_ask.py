@@ -729,16 +729,20 @@ class Child:
         env.pop("ANTHROPIC_SEARCH_KEY", None)
         with open(self.log, "ab") as f:
             self.proc = subprocess.Popen(self.cmd, stdout=f, stderr=f, env=env, cwd=str(self.tmp))
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            if self.proc.poll() is not None:
-                raise AssertionError("server exited early:\n" + self.log_text())
-            try:
-                if request(self.port, "GET", "/healthz").status == 200:
-                    return self
-            except OSError:
-                time.sleep(0.05)
-        raise AssertionError("server did not start:\n" + self.log_text())
+        try:
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                if self.proc.poll() is not None:
+                    raise AssertionError("server exited early:\n" + self.log_text())
+                try:
+                    if request(self.port, "GET", "/healthz").status == 200:
+                        return self
+                except OSError:
+                    time.sleep(0.05)
+            raise AssertionError("server did not start:\n" + self.log_text())
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
 
     def __exit__(self, *exc):
         if self.proc and self.proc.poll() is None:
@@ -1074,6 +1078,14 @@ class AskServerTests(AskServerBase):
         self.assertEqual(self.post([{"q": "x" * 501}]).json()["error"], "Keep questions under 500 characters.")
         self.assertEqual(self.post([]).json()["error"], "Ask a question first.")
         self.assertEqual(self.rows(), [])
+
+    def test_small_body_on_early_answer_is_drained(self):
+        """A POST the server answers without using its body (unknown path) still gets its 404, not a reset."""
+        body = b"x" * 4000
+        head = ("POST /api/deals/nope HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json\r\n"
+                "Content-Length: %d\r\n\r\n" % (self.host(), len(body))).encode()
+        out = raw_request(self.port, head + body)
+        self.assertTrue(out.startswith(b"HTTP/1.0 404"), out[:40])
 
     def test_bad_body_400(self):
         cases = [(b"hi", {"Content-Type": "text/plain"}),

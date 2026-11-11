@@ -56,7 +56,7 @@ MAX_A = 1000
 MAX_ANSWER = 600
 MAX_ITEMS = 12
 MAX_IN_FLIGHT = 2
-POST_MAX = 64 * 1024  # the same limit as deals_server.POST_MAX
+POST_MAX = 64 * 1024  # the server reads up to this many bytes of a request body
 LOG_DAYS = 90
 
 UNAVAILABLE = "AI search is unavailable right now, try again"
