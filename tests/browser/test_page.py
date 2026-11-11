@@ -88,9 +88,13 @@ class PageCase(unittest.TestCase):
         self.addCleanup(self.server.stop)
         return self.server
 
-    def open(self, path: str, scheme: str, ready: str = "#kinds button.kind"):
-        """-> page. Its console errors, page errors and failed requests are collected in page.problems."""
-        ctx = self.browser.new_context(viewport=VIEW, color_scheme=scheme)
+    def open(self, path: str, scheme: str, ready: str = "#kinds button.kind", *, view=None, setup_ctx=None,
+             setup_page=None):
+        """-> page. Its console errors, page errors and failed requests are collected in page.problems.
+
+        view: a viewport other than 390x844. setup_ctx(ctx) runs after the local-server routing (so routes it adds
+        win); setup_page(page) runs before the page is opened (e.g. to freeze the clock)."""
+        ctx = self.browser.new_context(viewport=view or VIEW, color_scheme=scheme)
         self.addCleanup(ctx.close)
         base = self.server.base
 
@@ -102,6 +106,8 @@ class PageCase(unittest.TestCase):
             else:
                 r.fulfill(status=200, content_type="text/css", body="")
         ctx.route("**/*", route)
+        if setup_ctx:
+            setup_ctx(ctx)
         page = ctx.new_page()
         page.problems = []
         def on_console(m):
@@ -112,6 +118,8 @@ class PageCase(unittest.TestCase):
         page.on("pageerror", lambda e: page.problems.append("pageerror: " + str(e)))
         page.on("requestfailed", lambda r: page.problems.append(f"requestfailed: {r.url}"))
         page.on("response", lambda r: r.status >= 400 and page.problems.append(f"HTTP {r.status}: {r.url}"))
+        if setup_page:
+            setup_page(page)
         page.goto(self.server.base + path)
         page.wait_for_selector(ready)
         return page
