@@ -343,7 +343,14 @@ class Tools(Base):
         with self.assertRaises(dq.QueryError) as cm:
             dq.targets_out(s)
         self.assertIn("couldn't be read", str(cm.exception))
-        self.assertEqual(o["scopes"]["target"], 0)
+        own = [g for g in FX.games if g.get("target") is not None and g["price"] is not None
+               and g["price"]["amount"] <= g["target"]]
+        self.assertTrue(own)
+        self.assertEqual(o["scopes"]["target"], len(own))
+        self.assertEqual(dq.find(s, relax=False, scope="target")["matches"], len(own))
+        row = dq.find_out(s, scope="all", query="Sale 01")["games"][0]
+        self.assertEqual((row["target"], row["at_target"]), (FX.game("Sale 01")["target"], True))
+        self.assertEqual(dq.game_out(s, game="Sale 01")["game"]["target_gap"], -5.0)
 
     def test_legacy_and_missing(self):
         self.assertIsNone(dq.build_snapshot(None, {}, None))

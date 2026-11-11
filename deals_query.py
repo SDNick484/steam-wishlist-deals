@@ -148,6 +148,18 @@ def at_target(g: dict, targets: dict[int, float]) -> bool:
     return t is not None and a is not None and a <= t
 
 
+def effective_targets(s: Snapshot) -> dict[int, float]:
+    """The targets the page uses: the live ones, or when targets.json couldn't be read, each game's own
+    snapshot `target` (deals.html targetOf)."""
+    if s.targets_ok:
+        return s.targets
+    return {g["appid"]: float(g["target"]) for g in s.games if _is_num(g.get("target"))}
+
+
+def target_of(g: dict, s: Snapshot) -> float | None:
+    return effective_targets(s).get(g["appid"])
+
+
 def bundle_only(g: dict) -> bool:
     """On sale only because a bundle has it."""
     return bool(g.get("inBundle")) and not (g.get("cut") or 0) > 0
@@ -341,7 +353,7 @@ def _year(g: dict) -> int | None:
 
 
 def _row(s: Snapshot, g: dict, at: datetime) -> dict:
-    target = s.targets.get(g["appid"]) if s.targets_ok else None
+    target = target_of(g, s)
     b = g.get("bundle") if isinstance(g.get("bundle"), dict) else None
     d = g.get("deck")
     low = _amount(g.get("low"))
@@ -352,7 +364,7 @@ def _row(s: Snapshot, g: dict, at: datetime) -> dict:
         "is_low": bool(g.get("isLow")), "new_low": _is_new_low(s, g),
         "on_sale": bool(g.get("onSale")), "in_bundle": bool(g.get("inBundle")),
         "bundle": {"title": b.get("title"), "price": _amount(b.get("price"))} if b else None,
-        "target": target, "at_target": at_target(g, s.targets),
+        "target": target, "at_target": at_target(g, effective_targets(s)),
         "steam_rating": _score(g), "steam_reviews": _steam(g).get("count"),
         "metacritic": ((g.get("reviews") or {}).get("metacritic") or {}).get("score"),
         "deck": None if d is None else DECK_LABEL.get(d, DECK_LABEL[0]),
@@ -389,6 +401,7 @@ def _select(s: Snapshot, a: dict, titles: set[str] | None = None) -> tuple[list[
     """(base, listing): base is everything but the scope and the % filter, as on the page."""
     shops = {x.casefold() for x in a["shops"]} if a["shops"] else None
     tags = {tag_key(x) for x in a["tags"]} - {""} if a["tags"] else None
+    eff = effective_targets(s)
     base = []
     for g in s.games:
         if shops and (g.get("shop") or "").casefold() not in shops:
@@ -408,10 +421,10 @@ def _select(s: Snapshot, a: dict, titles: set[str] | None = None) -> tuple[list[
             p = _price_for_max(g)
             if p is None or p > a["max_price"]:
                 continue
-        if a["at_target"] is not None and at_target(g, s.targets) != a["at_target"]:
+        if a["at_target"] is not None and at_target(g, eff) != a["at_target"]:
             continue
         base.append(g)
-    listing = [g for g in base if in_scope(g, a["scope"], s.targets) and cut_ok(g, a["scope"], a["min_cut"])]
+    listing = [g for g in base if in_scope(g, a["scope"], eff) and cut_ok(g, a["scope"], a["min_cut"])]
     return base, listing
 
 
@@ -453,12 +466,13 @@ def find(snap: Snapshot | None, *, relax: bool, **args: Any) -> dict:
                 break
     matches = len(listing)
     scope = a["scope"]
+    eff = effective_targets(s)
     # What the % filter hid, worked out for the filters as asked, so the note survives a relaxed search.
     min_cut, dropped_cut = strict_cut, strict_cut and not a["min_cut"]
     if min_cut and scope not in CUT_SCOPES:
         notes.append(f"min_cut was ignored: it doesn't apply to scope {scope}.")
     elif min_cut and scope in ("sale", "target"):
-        hid = [g for g in strict_base if in_scope(g, scope, s.targets) and not cut_ok(g, scope, min_cut)]
+        hid = [g for g in strict_base if in_scope(g, scope, eff) and not cut_ok(g, scope, min_cut)]
         tail = "(min_cut was ignored)" if dropped_cut else "by min_cut"
         if scope == "sale":
             n = sum(1 for g in hid if bundle_only(g))
@@ -482,7 +496,8 @@ def overview_out(snap: Snapshot | None) -> dict:
     at = now()
     gen = _parse_time(s.generated_at)
     run = s.run
-    scopes = {sc: sum(1 for g in s.games if in_scope(g, sc, s.targets)) for sc in SCOPES}
+    eff = effective_targets(s)
+    scopes = {sc: sum(1 for g in s.games if in_scope(g, sc, eff)) for sc in SCOPES}
     return {
         "wishlist_games": s.wishlist_count if s.wishlist_count is not None else len(s.games),
         "tracked": len(s.games), "untracked": s.untracked, "currency": s.currency,
