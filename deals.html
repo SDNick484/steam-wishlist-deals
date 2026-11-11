@@ -360,7 +360,7 @@ function scheduleText() {
   if (!links.length) return;
   const nav = document.getElementById("pagesNav");
   nav.innerHTML = links.map((l) => `<a href="${esc(l.url)}">${esc(l.label)}</a>`).join("") +
-    `<a href="./" aria-current="page">Deals</a>`;
+    `<a href="./"${location.pathname.match(/\/ask\/?$/) ? "" : ' aria-current="page"'}>Deals</a>`;
   nav.hidden = false;
 })();
 
@@ -761,17 +761,18 @@ async function loadRunStatus() {
 async function loadAskStatus() {
   try {
     const r = await fetch("api/deals/ask/status", { cache: "no-store" });
-    const j = r.ok ? await r.json() : null;
-    CHAT.avail = !!(j && j.ask === true);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    CHAT.avail = !!(j && j.ask === true);   // only a good answer can switch Ask off
     if (CHAT.avail && Number.isInteger(j.turns) && j.turns > 0) CHAT.turns = j.turns;
-  } catch (e) { CHAT.avail = false; }
+  } catch (e) { if (CHAT.avail == null) CHAT.avail = false; }   // a failed reload keeps what was known
 }
 
 async function load() {
   const snap = fetch("api/deals", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [s] = await Promise.all([snap, loadTargets(), loadRunStatus(), loadAskStatus()]);
-  SNAP = s;
+  if (s || MODE !== "ask" || !SNAP) SNAP = s;   // in Ask a failed reload keeps the good snapshot
   LOADED = true;
   renderPill();
   renderBanner();

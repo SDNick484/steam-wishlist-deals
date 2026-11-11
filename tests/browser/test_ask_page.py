@@ -461,6 +461,78 @@ class AskPage(PageCase):
             self.clean(page)
         self.each(run)
 
+    # --- a failed reload must not wipe the thread (final review I1) -------------------------------------------
+    def _reload(self, page, pattern, fail=True):
+        """Fire visibilitychange the way a tab coming back to the front does, with `pattern` failing once."""
+        hits = []
+        def handler(route):
+            hits.append(route.request.url)
+            route.abort()
+        if fail:
+            page.route(pattern, handler)
+        page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        if fail:
+            for _ in range(40):
+                if hits:
+                    break
+                page.wait_for_timeout(50)
+            self.assertTrue(hits, "the reload never fetched " + str(pattern))
+            page.unroute(pattern)
+        page.wait_for_timeout(500)
+
+    def _thread_intact(self, page):
+        self.assertEqual(page.locator(".chat-q").count(), 1)
+        self.assertEqual(page.locator("#chatThread .deal").count(), 2)
+        self.assertNotIn("Ask isn't available here.", page.inner_text("#chatThread"))
+        self.assertTrue(page.is_visible("#chatQ"))
+        self.assertFalse(page.is_disabled("#chatQ"))
+
+    def test_status_fetch_failure_keeps_thread(self):
+        def run(path, scheme):
+            page = self.go(path, scheme)
+            self.ask(page, "keep me")
+            self._reload(page, "**/api/deals/ask/status")
+            self._thread_intact(page)
+            self.assertEqual(page.eval_on_selector(".chat-q", "e => e.textContent"), "keep me")
+        self.each(run)
+
+    def test_status_non_ok_keeps_thread(self):
+        def run(path, scheme):
+            page = self.go(path, scheme)
+            self.ask(page, "keep me")
+            page.route("**/api/deals/ask/status", lambda r: r.fulfill(status=502, json={"error": "x"}))
+            page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+            page.wait_for_timeout(600)
+            page.unroute("**/api/deals/ask/status")
+            self._thread_intact(page)
+        self.each(run)
+
+    def test_deals_fetch_failure_keeps_thread(self):
+        def run(path, scheme):
+            page = self.go(path, scheme)
+            self.ask(page, "keep me")
+            self._reload(page, re.compile(r"/api/deals$"))
+            self._thread_intact(page)
+        self.each(run)
+
+    def test_status_ask_false_on_reload_turns_ask_off(self):
+        def run(path, scheme):
+            page = self.go(path, scheme)
+            self.ask(page, "keep me")
+            self.status = {"ask": False}
+            self._reload(page, None, fail=False)
+            page.wait_for_selector("#chatThread a")
+            self.assertIn("Ask isn't available here.", page.inner_text("#chatThread"))
+            self.assertEqual(page.locator("#chatTop").count(), 0)
+        self.each(run)
+
+    def test_ask_mode_nav_has_one_current_page(self):
+        def run(path, scheme):
+            page = self.go(path, scheme)
+            self.assertEqual(page.locator('[aria-current="page"]').count(), 1)
+            self.assertEqual(page.locator('nav.top [aria-current="page"]').count(), 0)
+        self.each(run)
+
     def test_no_console_errors_all_paths(self):
         def run(path, scheme):
             for p in ("/", "/deals", "/ask", "/deals/ask"):
