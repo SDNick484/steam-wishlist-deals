@@ -175,7 +175,7 @@ ANTHROPIC_SEARCH_MODEL=
 ASK_DAILY_LIMIT=
 # Cloudflare Access team domain, e.g. your-team.cloudflareaccess.com
 ASK_ACCESS_TEAM=
-# The deals page's Access application Audience (AUD) tag.
+# Audience (AUD) tag of the Access application that covers this page's hostname: the dashboard's application, the same value as the Backlog app's ask.env.
 ASK_ACCESS_AUD=
 # Comma-separated emails allowed to ask; empty means any user Access lets in.
 ASK_EMAILS=

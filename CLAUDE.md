@@ -29,7 +29,8 @@ BusyBox crond is the primary target, systemd units are secondary.
   only its own `/etc/logrotate.d/steam-wishlist-deals`, and stamps the build id into the installed server
 - `contrib/systemd/`: service and timer units. `examples/config.example.ini`: every setting
 - `tests/`: unit tests (`test_evaluate`, `test_snapshot`, `test_targets_file`, `test_server`,
-  `test_e2e_unchanged`, `test_security`, `test_run_status`, `test_privacy_scan`) with local stand-ins for Steam, ITAD and ProtonDB
+  `test_e2e_unchanged`, `test_security`, `test_run_status`, `test_privacy_scan`, `test_deals_query`, `test_ask`,
+  `test_access_jwt`, with `tests/ask_shim.py` for the Ask server; the Ask page test is `tests/browser/test_ask_page.py`) with local stand-ins for Steam, ITAD and ProtonDB
   (`stub_services.py`, `helpers.py`) and golden files in `tests/fixtures/`.
   `tests/browser/` is the page test (Playwright, test-only), `tests/installer/check.sh` the installer check
 - `.github/`: `workflows/ci.yml`, `dependabot.yml`, and `scripts/` (`lint.sh`, `systemd_verify.sh`,
